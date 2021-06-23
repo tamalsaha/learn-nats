@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"github.com/nats-io/nats.go"
+	"github.com/tamalsaha/nats-hop-demo/shared"
 	"k8s.io/klog/v2"
 	"time"
 )
 
 func main() {
+	fmt.Println(shared.NATS_URL)
 	nc, err := nats.Connect(nats.DefaultURL)
 	if err != nil {
 		klog.Fatalln(err)
@@ -22,4 +24,6 @@ func main() {
 	} else {
 		fmt.Println(string(m.Data))
 	}
+
+	select {}
 }

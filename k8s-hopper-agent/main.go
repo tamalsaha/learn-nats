@@ -6,14 +6,43 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/nats-io/nats.go"
+	"github.com/tamalsaha/nats-hop-demo/shared"
 	"github.com/unrolled/render"
 	"go.wandrs.dev/binding"
 	"k8s.io/klog/v2"
 	"net/http"
+	"os"
+	"os/signal"
 	"time"
 )
 
 func main() {
+	fmt.Println(shared.NATS_URL)
+	nc, err := nats.Connect(nats.DefaultURL)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	defer nc.Close()
+
+	_, err = nc.QueueSubscribe("k8s", "NATS-RPLY-22", func(msg *nats.Msg) {
+		resp := nats.NewMsg(msg.Reply)
+		resp.Data = []byte("response_from_go")
+		if err := msg.RespondMsg(resp); err != nil {
+			fmt.Println("----", err)
+		}
+	})
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	ic := make(chan os.Signal, 1)
+	signal.Notify(ic, os.Interrupt)
+	<-ic
+}
+
+func main_() {
 	nc, err := nats.Connect(nats.DefaultURL)
 	if err != nil {
 		klog.Fatalln(err)
