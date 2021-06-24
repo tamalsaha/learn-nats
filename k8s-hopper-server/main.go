@@ -6,7 +6,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/nats-io/nats.go"
-	"github.com/tamalsaha/nats-hop-demo/shared"
 	"github.com/unrolled/render"
 	"go.wandrs.dev/binding"
 	"k8s.io/klog/v2"
@@ -15,8 +14,8 @@ import (
 	"time"
 )
 
-func main_request() {
-	fmt.Println(shared.NATS_URL)
+func main() {
+	// fmt.Println(shared.NATS_URL)
 	nc, err := nats.Connect(nats.DefaultURL)
 	if err != nil {
 		klog.Fatalln(err)
@@ -41,7 +40,7 @@ var pool = sync.Pool{
 	},
 }
 
-func main() {
+func main__() {
 	nc, err := nats.Connect(nats.DefaultURL)
 	if err != nil {
 		klog.Fatalln(err)
