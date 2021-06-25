@@ -38,6 +38,18 @@ func main() {
 		panic(err)
 	}
 
+
+	data, err := json.Marshal(cert)
+	if err != nil {
+		panic(err)
+	}
+	err = ioutil.WriteFile("/tmp/kind_cert.json", data, 0644)
+	if err != nil {
+		panic(err)
+	}
+
+
+
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 	err = enc.Encode(cert)
@@ -46,15 +58,6 @@ func main() {
 	}
 
 	err = ioutil.WriteFile("/tmp/kind_cert.txt", buf.Bytes(), 0644)
-	if err != nil {
-		panic(err)
-	}
-
-	data, err := json.Marshal(cert)
-	if err != nil {
-		panic(err)
-	}
-	err = ioutil.WriteFile("/tmp/kind_cert.json", data, 0644)
 	if err != nil {
 		panic(err)
 	}
