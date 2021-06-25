@@ -137,8 +137,10 @@ func respond(in []byte) (*transport.R, *http.Request, *http.Response, error) {
 			DialContext:         dial,
 			DisableCompression:  r.DisableCompression,
 		})
-
 	}
+
+	//req.URL = nil
+	req.RequestURI = ""
 
 	httpClient := &http.Client{
 		Transport: rt,

@@ -22,6 +22,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"github.com/nats-io/nats.go"
 	"io/ioutil"
 	"k8s.io/client-go/transport"
 	"net/http"
@@ -34,7 +35,7 @@ import (
 
 // New returns an http.RoundTripper that will provide the authentication
 // or transport level security defined by the provided Config.
-func New(config *transport.Config) (http.RoundTripper, error) {
+func New(config *transport.Config, nc *nats.Conn, sub string, timeout time.Duration) (http.RoundTripper, error) {
 	// Set transport level security
 	//if config.Transport != nil && (config.HasCA() || config.HasCertAuth() || config.HasCertCallback() || config.TLS.Insecure) {
 	//	return nil, fmt.Errorf("using a custom transport with TLS certificate options or the insecure flag is not allowed")
@@ -50,18 +51,9 @@ func New(config *transport.Config) (http.RoundTripper, error) {
 		return nil, fmt.Errorf("using a custom proxy")
 	}
 
-	var (
-		rt  http.RoundTripper
-		err error
-	)
-
-	if config.Transport != nil {
-		rt = config.Transport
-	} else {
-		rt, err = tlsCache.get(config)
-		if err != nil {
-			return nil, err
-		}
+	rt, err := tlsCache.get(config, nc, sub, timeout)
+	if err != nil {
+		return nil, err
 	}
 
 	return HTTPWrappersForConfig(config, rt)

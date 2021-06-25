@@ -18,15 +18,12 @@ package transport
 
 import (
 	"fmt"
+	"github.com/nats-io/nats.go"
 	"k8s.io/client-go/transport"
-	"net"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
-
-	utilnet "k8s.io/apimachinery/pkg/util/net"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 // TlsTransportCache caches TLS http.RoundTrippers different configurations. The
@@ -34,12 +31,12 @@ import (
 // the config has no custom TLS options, http.DefaultTransport is returned.
 type tlsTransportCache struct {
 	mu         sync.Mutex
-	transports map[tlsCacheKey]*http.Transport
+	transports map[tlsCacheKey]http.RoundTripper
 }
 
 const idleConnsPerHost = 25
 
-var tlsCache = &tlsTransportCache{transports: make(map[tlsCacheKey]*http.Transport)}
+var tlsCache = &tlsTransportCache{transports: make(map[tlsCacheKey]http.RoundTripper)}
 
 type tlsCacheKey struct {
 	insecure           bool
@@ -61,7 +58,7 @@ func (t tlsCacheKey) String() string {
 	return fmt.Sprintf("insecure:%v, caData:%#v, certData:%#v, keyData:%s, serverName:%s, disableCompression:%t", t.insecure, t.caData, t.certData, keyText, t.serverName, t.disableCompression)
 }
 
-func (c *tlsTransportCache) get(config *transport.Config) (http.RoundTripper, error) {
+func (c *tlsTransportCache) get(config *transport.Config, nc *nats.Conn, sub string, timeout time.Duration) (http.RoundTripper, error) {
 	key, canCache, err := tlsConfigKey(config)
 	if err != nil {
 		return nil, err
@@ -79,7 +76,7 @@ func (c *tlsTransportCache) get(config *transport.Config) (http.RoundTripper, er
 	}
 
 	// Get the TLS options for this client config
-	tlsConfig, err := TLSConfigFor(config)
+	tlsConfig, err := PersistableTLSConfigFor(config)
 	if err != nil {
 		return nil, err
 	}
@@ -88,43 +85,20 @@ func (c *tlsTransportCache) get(config *transport.Config) (http.RoundTripper, er
 		return http.DefaultTransport, nil
 	}
 
-	dial := config.Dial
-	if dial == nil {
-		dial = (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext
+	rt := &NatsTransport{
+		Conn:               nc,
+		Subject:            sub,
+		Timeout:            timeout,
+		DisableCompression: config.DisableCompression,
+		TLS:                tlsConfig,
 	}
-
-	// If we use are reloading files, we need to handle certificate rotation properly
-	// TODO(jackkleeman): We can also add rotation here when config.HasCertCallback() is true
-	if config.TLS.ReloadTLSFiles {
-		dynamicCertDialer := certRotatingDialer(tlsConfig.GetClientCertificate, dial)
-		tlsConfig.GetClientCertificate = dynamicCertDialer.GetClientCertificate
-		dial = dynamicCertDialer.connDialer.DialContext
-		go dynamicCertDialer.Run(wait.NeverStop)
-	}
-
-	proxy := http.ProxyFromEnvironment
-	if config.Proxy != nil {
-		proxy = config.Proxy
-	}
-
-	transport := utilnet.SetTransportDefaults(&http.Transport{
-		Proxy:               proxy,
-		TLSHandshakeTimeout: 10 * time.Second,
-		TLSClientConfig:     tlsConfig,
-		MaxIdleConnsPerHost: idleConnsPerHost,
-		DialContext:         dial,
-		DisableCompression:  config.DisableCompression,
-	})
 
 	if canCache {
 		// Cache a single transport for these options
-		c.transports[key] = transport
+		c.transports[key] = rt
 	}
 
-	return transport, nil
+	return rt, nil
 }
 
 // tlsConfigKey returns a unique key for tls.Config objects returned from TLSConfigFor

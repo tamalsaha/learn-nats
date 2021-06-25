@@ -7,21 +7,24 @@ import (
 	"fmt"
 	"github.com/nats-io/nats.go"
 	"github.com/tamalsaha/nats-hop-demo/transport"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/scheme"
+	coreclient "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
 	"k8s.io/klog/v2"
 	"log"
 	"net/http"
 	"path/filepath"
 	"sync"
 	"time"
-
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
 )
 
 func main() {
+	http.Get("")
+
 	nc, err := nats.Connect(nats.DefaultURL)
 	if err != nil {
 		klog.Fatalln(err)
@@ -45,19 +48,41 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	c2.Transport, err = transport.New(cfg)
+	c2.Transport, err = transport.New(cfg, nc, "k8s", 10000*time.Second)
 	if err != nil {
 		panic(err)
 	}
-	client := kubernetes.NewForConfigOrDie(c2)
 
-	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	// needs to be updated for each GVR
+	if err := setConfigDefaults(c2); err != nil {
+		panic(err)
+	}
+	rc, err := transport.RESTClientFor(c2)
+	if err != nil {
+		panic(err)
+	}
+	cc := coreclient.New(rc)
+
+	nodes, err := cc.Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}
 	for _, n := range nodes.Items {
 		fmt.Println(n.Name)
 	}
+}
+
+func setConfigDefaults(config *rest.Config) error {
+	gv := v1.SchemeGroupVersion
+	config.GroupVersion = &gv
+	config.APIPath = "/api"
+	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+
+	if config.UserAgent == "" {
+		config.UserAgent = rest.DefaultKubernetesUserAgent()
+	}
+
+	return nil
 }
 
 var pool = sync.Pool{

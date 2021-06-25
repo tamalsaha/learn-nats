@@ -63,7 +63,7 @@ func (rt *NatsTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	defer pool.Put(buf)
 	buf.Reset()
 
-	if err := r.Write(buf); err != nil { // WriteProxy
+	if err := r.WriteProxy(buf); err != nil {
 		return nil, err
 	}
 
