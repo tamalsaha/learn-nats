@@ -21,6 +21,9 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
+
+
+
 func main() {
 	nc, err := nats.Connect(nats.DefaultURL)
 	if err != nil {

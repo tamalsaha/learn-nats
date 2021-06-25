@@ -1,19 +1,25 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/nats-io/nats.go"
 	"github.com/tamalsaha/nats-hop-demo/shared"
+	"github.com/tamalsaha/nats-hop-demo/transport"
 	"github.com/unrolled/render"
 	"go.wandrs.dev/binding"
+	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/klog/v2"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
+	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 )
 
 func main() {
@@ -26,6 +32,25 @@ func main() {
 	defer nc.Close()
 
 	_, err = nc.QueueSubscribe("k8s", "NATS-RPLY-22", func(msg *nats.Msg) {
+		resp, err := respond(msg.Data)
+		if err != nil {
+			responsewriters.ErrorToAPIStatus(err)
+		}
+
+
+		var r transport.R
+		err := json.Unmarshal(msg.Data, &r)
+		if err != nil {
+			klog.ErrorS(err, "failed to parse message")
+			return
+		}
+
+		req, err := http.ReadRequest(bufio.NewReader(bytes.NewReader(r.Request)))
+		if err != nil {
+			klog.ErrorS(err, "failed to parse request")
+			return
+		}
+
 		resp := nats.NewMsg(msg.Reply)
 		resp.Data = []byte("response_from_go")
 		if err := msg.RespondMsg(resp); err != nil {
@@ -40,6 +65,51 @@ func main() {
 	ic := make(chan os.Signal, 1)
 	signal.Notify(ic, os.Interrupt)
 	<-ic
+}
+
+// k8s.io/client-go/transport/cache.go
+const idleConnsPerHost = 25
+
+func respond(in []byte) (*http.Response, error) {
+	var r transport.R
+	err := json.Unmarshal(in, &r)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.ReadRequest(bufio.NewReader(bytes.NewReader(r.Request)))
+	if err != nil {
+		return nil, err
+	}
+
+	// cache transport
+	rt := http.DefaultTransport
+	if r.TLS != nil {
+		dial := (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext
+
+		tlsconfig, err := r.TLS.TLSConfigFor()
+		if err != nil {
+			return nil, err
+		}
+		rt = utilnet.SetTransportDefaults(&http.Transport{
+			Proxy:               http.ProxyFromEnvironment,
+			TLSHandshakeTimeout: 10 * time.Second,
+			TLSClientConfig:     tlsconfig,
+			MaxIdleConnsPerHost: idleConnsPerHost,
+			DialContext:         dial,
+			DisableCompression:  r.DisableCompression,
+		})
+
+	}
+
+	httpClient := &http.Client{
+		Transport: rt,
+		Timeout:   r.Timeout,
+	}
+	return httpClient.Do(req)
 }
 
 func main_() {

@@ -39,6 +39,10 @@ import (
 // account will be grouped in the default global account.
 const globalAccountName = DEFAULT_GLOBAL_ACCOUNT
 
+const defaultMaxSubLimitReportThreshold = int64(2 * time.Second)
+
+var maxSubLimitReportThreshold = defaultMaxSubLimitReportThreshold
+
 // Account are subject namespace definitions. By default no messages are shared between accounts.
 // You can share via Exports and Imports of Streams and Services.
 type Account struct {
@@ -84,6 +88,7 @@ type Account struct {
 	defaultPerms *Permissions
 	tags         jwt.TagList
 	nameTag      string
+	lastLimErr   int64
 }
 
 // Account based limits.
@@ -503,6 +508,22 @@ func (a *Account) TotalSubs() int {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	return int(a.sl.Count())
+}
+
+func (a *Account) shouldLogMaxSubErr() bool {
+	if a == nil {
+		return true
+	}
+	a.mu.RLock()
+	last := a.lastLimErr
+	a.mu.RUnlock()
+	if now := time.Now().UnixNano(); now-last >= maxSubLimitReportThreshold {
+		a.mu.Lock()
+		a.lastLimErr = now
+		a.mu.Unlock()
+		return true
+	}
+	return false
 }
 
 // MapDest is for mapping published subjects for clients.
@@ -1846,9 +1867,16 @@ func (a *Account) addServiceImportSub(si *serviceImport) error {
 	cb := func(sub *subscription, c *client, subject, reply string, msg []byte) {
 		c.processServiceImport(si, a, msg)
 	}
-	_, err := c.processSubEx([]byte(subject), nil, []byte(sid), cb, true, true, false)
-
-	return err
+	sub, err := c.processSubEx([]byte(subject), nil, []byte(sid), cb, true, true, false)
+	if err != nil {
+		return err
+	}
+	// Leafnodes introduce a new way to introduce messages into the system. Therefore forward import subscription
+	// This is similar to what initLeafNodeSmapAndSendSubs does
+	// TODO we need to consider performing this update as we get client subscriptions.
+	//      This behavior would result in subscription propagation only where actually used.
+	a.srv.updateLeafNodes(a, sub, 1)
+	return nil
 }
 
 // Remove all the subscriptions associated with service imports.
@@ -2822,6 +2850,16 @@ func (s *Server) UpdateAccountClaims(a *Account, ac *jwt.AccountClaims) {
 	s.updateAccountClaimsWithRefresh(a, ac, true)
 }
 
+func (a *Account) traceLabel() string {
+	if a == nil {
+		return _EMPTY_
+	}
+	if a.nameTag != _EMPTY_ {
+		return fmt.Sprintf("%s/%s", a.Name, a.nameTag)
+	}
+	return a.Name
+}
+
 // updateAccountClaimsWithRefresh will update an existing account with new claims.
 // If refreshImportingAccounts is true it will also update incomplete dependent accounts
 // This will replace any exports or imports previously defined.
@@ -2927,7 +2965,7 @@ func (s *Server) updateAccountClaimsWithRefresh(a *Account, ac *jwt.AccountClaim
 	jsEnabled := s.JetStreamEnabled()
 	if jsEnabled && a == s.SystemAccount() {
 		for _, export := range allJsExports {
-			s.Debugf("Adding jetstream service export %q for %s", export, a.Name)
+			s.Debugf("Adding jetstream service export %q for %s", export, a.traceLabel())
 			if err := a.AddServiceExport(export, nil); err != nil {
 				s.Errorf("Error setting up jetstream service exports: %v", err)
 			}
@@ -2938,13 +2976,13 @@ func (s *Server) updateAccountClaimsWithRefresh(a *Account, ac *jwt.AccountClaim
 	for _, e := range ac.Exports {
 		switch e.Type {
 		case jwt.Stream:
-			s.Debugf("Adding stream export %q for %s", e.Subject, a.Name)
+			s.Debugf("Adding stream export %q for %s", e.Subject, a.traceLabel())
 			if err := a.addStreamExportWithAccountPos(
 				string(e.Subject), authAccounts(e.TokenReq), e.AccountTokenPosition); err != nil {
-				s.Debugf("Error adding stream export to account [%s]: %v", a.Name, err.Error())
+				s.Debugf("Error adding stream export to account [%s]: %v", a.traceLabel(), err.Error())
 			}
 		case jwt.Service:
-			s.Debugf("Adding service export %q for %s", e.Subject, a.Name)
+			s.Debugf("Adding service export %q for %s", e.Subject, a.traceLabel())
 			rt := Singleton
 			switch e.ResponseType {
 			case jwt.ResponseTypeStream:
@@ -2954,7 +2992,7 @@ func (s *Server) updateAccountClaimsWithRefresh(a *Account, ac *jwt.AccountClaim
 			}
 			if err := a.addServiceExportWithResponseAndAccountPos(
 				string(e.Subject), rt, authAccounts(e.TokenReq), e.AccountTokenPosition); err != nil {
-				s.Debugf("Error adding service export to account [%s]: %v", a.Name, err)
+				s.Debugf("Error adding service export to account [%s]: %v", a.traceLabel(), err)
 				continue
 			}
 			sub := string(e.Subject)
@@ -2964,13 +3002,13 @@ func (s *Server) updateAccountClaimsWithRefresh(a *Account, ac *jwt.AccountClaim
 					if e.Latency.Sampling == jwt.Headers {
 						hdrNote = " (using headers)"
 					}
-					s.Debugf("Error adding latency tracking%s for service export to account [%s]: %v", hdrNote, a.Name, err)
+					s.Debugf("Error adding latency tracking%s for service export to account [%s]: %v", hdrNote, a.traceLabel(), err)
 				}
 			}
 			if e.ResponseThreshold != 0 {
 				// Response threshold was set in options.
 				if err := a.SetServiceExportResponseThreshold(sub, e.ResponseThreshold); err != nil {
-					s.Debugf("Error adding service export response threshold for [%s]: %v", a.Name, err)
+					s.Debugf("Error adding service export response threshold for [%s]: %v", a.traceLabel(), err)
 				}
 			}
 		}
@@ -3008,14 +3046,14 @@ func (s *Server) updateAccountClaimsWithRefresh(a *Account, ac *jwt.AccountClaim
 			if i.LocalSubject != _EMPTY_ {
 				// set local subject implies to is empty
 				to = string(i.LocalSubject)
-				s.Debugf("Adding stream import %s:%q for %s:%q", acc.Name, from, a.Name, to)
+				s.Debugf("Adding stream import %s:%q for %s:%q", acc.traceLabel(), from, a.traceLabel(), to)
 				err = a.AddMappedStreamImportWithClaim(acc, from, to, i)
 			} else {
-				s.Debugf("Adding stream import %s:%q for %s:%q", acc.Name, from, a.Name, to)
+				s.Debugf("Adding stream import %s:%q for %s:%q", acc.traceLabel(), from, a.traceLabel(), to)
 				err = a.AddStreamImportWithClaim(acc, from, to, i)
 			}
 			if err != nil {
-				s.Debugf("Error adding stream import to account [%s]: %v", a.Name, err.Error())
+				s.Debugf("Error adding stream import to account [%s]: %v", a.traceLabel(), err.Error())
 				incompleteImports = append(incompleteImports, i)
 			}
 		case jwt.Service:
@@ -3023,9 +3061,9 @@ func (s *Server) updateAccountClaimsWithRefresh(a *Account, ac *jwt.AccountClaim
 				from = string(i.LocalSubject)
 				to = string(i.Subject)
 			}
-			s.Debugf("Adding service import %s:%q for %s:%q", acc.Name, from, a.Name, to)
+			s.Debugf("Adding service import %s:%q for %s:%q", acc.traceLabel(), from, a.traceLabel(), to)
 			if err := a.AddServiceImportWithClaim(acc, from, to, i); err != nil {
-				s.Debugf("Error adding service import to account [%s]: %v", a.Name, err.Error())
+				s.Debugf("Error adding service import to account [%s]: %v", a.traceLabel(), err.Error())
 				incompleteImports = append(incompleteImports, i)
 			}
 		}
@@ -3168,7 +3206,7 @@ func (s *Server) updateAccountClaimsWithRefresh(a *Account, ac *jwt.AccountClaim
 	// regardless of enabled or disabled. It handles both cases.
 	if jsEnabled {
 		if err := s.configJetStream(a); err != nil {
-			s.Errorf("Error configuring jetstream for account [%s]: %v", a.Name, err.Error())
+			s.Errorf("Error configuring jetstream for account [%s]: %v", a.traceLabel(), err.Error())
 			a.mu.Lock()
 			// Absent reload of js server cfg, this is going to be broken until js is disabled
 			a.incomplete = true
@@ -3235,6 +3273,7 @@ func (s *Server) updateAccountClaimsWithRefresh(a *Account, ac *jwt.AccountClaim
 			acc.mu.RLock()
 			incomplete := acc.incomplete
 			name := acc.Name
+			label := acc.traceLabel()
 			// Must use jwt in account or risk failing on fetch
 			// This jwt may not be the same that caused exportingAcc to be in incompleteAccExporterMap
 			claimJWT := acc.claimJWT
@@ -3250,7 +3289,7 @@ func (s *Server) updateAccountClaimsWithRefresh(a *Account, ac *jwt.AccountClaim
 					// Since this account just got updated, the import itself may be in error. So trace that.
 					if _, ok := s.incompleteAccExporterMap.Load(old.Name); ok {
 						s.incompleteAccExporterMap.Delete(old.Name)
-						s.Errorf("Account %s has issues importing account %s", name, old.Name)
+						s.Errorf("Account %s has issues importing account %s", label, old.Name)
 					}
 				}
 			}
