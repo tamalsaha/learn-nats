@@ -21,9 +21,6 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-
-
-
 func main() {
 	nc, err := nats.Connect(nats.DefaultURL)
 	if err != nil {
@@ -76,6 +73,8 @@ type natshop struct {
 func (rt *natshop) RoundTrip(r *http.Request) (*http.Response, error) {
 	buf := pool.Get().(*bytes.Buffer)
 	defer pool.Put(buf)
+	buf.Reset()
+
 	if err := r.Write(buf); err != nil { // WriteProxy
 		return nil, err
 	}

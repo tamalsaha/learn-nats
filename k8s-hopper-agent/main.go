@@ -12,15 +12,23 @@ import (
 	"github.com/tamalsaha/nats-hop-demo/transport"
 	"github.com/unrolled/render"
 	"go.wandrs.dev/binding"
+	"io"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
+	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	"k8s.io/klog/v2"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"time"
-	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 )
+
+var pool = sync.Pool{
+	New: func() interface{} {
+		return new(bytes.Buffer)
+	},
+}
 
 func main() {
 	fmt.Println(shared.NATS_URL)
@@ -32,29 +40,56 @@ func main() {
 	defer nc.Close()
 
 	_, err = nc.QueueSubscribe("k8s", "NATS-RPLY-22", func(msg *nats.Msg) {
-		resp, err := respond(msg.Data)
+		r2, req, resp, err := respond(msg.Data)
 		if err != nil {
-			responsewriters.ErrorToAPIStatus(err)
+			status := responsewriters.ErrorToAPIStatus(err)
+			data, _ := json.Marshal(status)
+
+			resp = &http.Response{
+				Status:           "", // status.Status,
+				StatusCode:       int(status.Code),
+				Proto:            "",
+				ProtoMajor:       0,
+				ProtoMinor:       0,
+				Header:           nil,
+				Body:             io.NopCloser(bytes.NewReader(data)),
+				ContentLength:    int64(len(data)),
+				TransferEncoding: nil,
+				Close:            true,
+				Uncompressed:     false,
+				Trailer:          nil,
+				Request:          nil,
+				TLS:              nil,
+			}
+			if req != nil {
+				resp.Proto = req.Proto
+				resp.ProtoMajor = req.ProtoMajor
+				resp.ProtoMinor = req.ProtoMinor
+
+				resp.TransferEncoding = req.TransferEncoding
+				resp.Request = req
+				resp.TLS = req.TLS
+			}
+			if r2 != nil {
+				resp.Uncompressed = r2.DisableCompression
+			}
 		}
 
+		buf := pool.Get().(*bytes.Buffer)
+		defer pool.Put(buf)
+		buf.Reset()
 
-		var r transport.R
-		err := json.Unmarshal(msg.Data, &r)
-		if err != nil {
-			klog.ErrorS(err, "failed to parse message")
-			return
+		respMsg := &nats.Msg{
+			Subject: msg.Reply,
+		}
+		if err := resp.Write(buf); err != nil { // WriteProxy
+			respMsg.Data = []byte(err.Error())
+		} else {
+			respMsg.Data = buf.Bytes()
 		}
 
-		req, err := http.ReadRequest(bufio.NewReader(bytes.NewReader(r.Request)))
-		if err != nil {
-			klog.ErrorS(err, "failed to parse request")
-			return
-		}
-
-		resp := nats.NewMsg(msg.Reply)
-		resp.Data = []byte("response_from_go")
-		if err := msg.RespondMsg(resp); err != nil {
-			fmt.Println("----", err)
+		if err := msg.RespondMsg(respMsg); err != nil {
+			klog.ErrorS(err, "failed to respond to message")
 		}
 	})
 	if err != nil {
@@ -70,16 +105,16 @@ func main() {
 // k8s.io/client-go/transport/cache.go
 const idleConnsPerHost = 25
 
-func respond(in []byte) (*http.Response, error) {
+func respond(in []byte) (*transport.R, *http.Request, *http.Response, error) {
 	var r transport.R
 	err := json.Unmarshal(in, &r)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
 	req, err := http.ReadRequest(bufio.NewReader(bytes.NewReader(r.Request)))
 	if err != nil {
-		return nil, err
+		return &r, nil, nil, err
 	}
 
 	// cache transport
@@ -92,7 +127,7 @@ func respond(in []byte) (*http.Response, error) {
 
 		tlsconfig, err := r.TLS.TLSConfigFor()
 		if err != nil {
-			return nil, err
+			return &r, req, nil, err
 		}
 		rt = utilnet.SetTransportDefaults(&http.Transport{
 			Proxy:               http.ProxyFromEnvironment,
@@ -109,7 +144,8 @@ func respond(in []byte) (*http.Response, error) {
 		Transport: rt,
 		Timeout:   r.Timeout,
 	}
-	return httpClient.Do(req)
+	resp, err := httpClient.Do(req)
+	return &r, req, resp, err
 }
 
 func main_() {
@@ -168,8 +204,6 @@ func main_() {
 		}
 		fmt.Println(string(msg.Data))
 		// w.Write(msg.Data)
-
-
 
 		// this is the last in the chain, no not calling next.ServeHTTP()
 		return

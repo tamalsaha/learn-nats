@@ -99,7 +99,7 @@ func (c *PersistableTLSConfig) HasCertAuth() bool {
 
 // TLSConfigFor returns a tls.Config that will provide the transport level security defined
 // by the provided Config. Will return nil if no transport level security is requested.
-func (c *PersistableTLSConfig)  TLSConfigFor() (*tls.Config, error) {
+func (c *PersistableTLSConfig) TLSConfigFor() (*tls.Config, error) {
 	if !(c.HasCA() || c.HasCertAuth() || c.Insecure || len(c.ServerName) > 0 || len(c.NextProtos) > 0) {
 		return nil, nil
 	}

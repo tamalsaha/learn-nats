@@ -50,8 +50,6 @@ func New(config *transport.Config) (http.RoundTripper, error) {
 		return nil, fmt.Errorf("using a custom proxy")
 	}
 
-
-
 	var (
 		rt  http.RoundTripper
 		err error
@@ -68,9 +66,6 @@ func New(config *transport.Config) (http.RoundTripper, error) {
 
 	return HTTPWrappersForConfig(config, rt)
 }
-
-
-
 
 // TLSConfigFor returns a tls.Config that will provide the transport level security defined
 // by the provided Config. Will return nil if no transport level security is requested.

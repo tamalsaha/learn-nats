@@ -78,9 +78,6 @@ func (c *tlsTransportCache) get(config *transport.Config) (http.RoundTripper, er
 		}
 	}
 
-
-
-
 	// Get the TLS options for this client config
 	tlsConfig, err := TLSConfigFor(config)
 	if err != nil {

@@ -73,6 +73,8 @@ func main__() {
 	m.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
 		buf := pool.Get().(*bytes.Buffer)
 		defer pool.Put(buf)
+		buf.Reset()
+
 		if err := r.Write(buf); err != nil { // WriteProxy
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

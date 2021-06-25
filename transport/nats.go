@@ -61,6 +61,7 @@ func (rt *NatsTransport) timeout(ctx context.Context, now time.Time) time.Durati
 func (rt *NatsTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	buf := pool.Get().(*bytes.Buffer)
 	defer pool.Put(buf)
+	buf.Reset()
 
 	if err := r.Write(buf); err != nil { // WriteProxy
 		return nil, err
@@ -69,9 +70,9 @@ func (rt *NatsTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	timeout := rt.timeout(r.Context(), time.Now())
 
 	r2 := R{
-		Request: buf.Bytes(),
-		TLS:     rt.TLS,
-		Timeout: max(0, timeout-500*time.Millisecond),
+		Request:            buf.Bytes(),
+		TLS:                rt.TLS,
+		Timeout:            max(0, timeout-500*time.Millisecond),
 		DisableCompression: rt.DisableCompression, // transport.Config
 	}
 	buf.Reset()
