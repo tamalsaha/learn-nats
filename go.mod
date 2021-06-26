@@ -10,8 +10,11 @@ require (
 	go.wandrs.dev/binding v0.0.2
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	gomodules.xyz/cert v1.3.0
+	k8s.io/api v0.21.1
 	k8s.io/apimachinery v0.21.1
 	k8s.io/apiserver v0.21.1
 	k8s.io/client-go v0.21.1
 	k8s.io/klog/v2 v2.8.0
 )
+
+replace k8s.io/client-go => github.com/kmodules/k8s-client-go v0.21.2-0.20210626063127-9ea1a0e30c24

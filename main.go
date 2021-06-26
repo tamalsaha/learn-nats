@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/nats-io/nats.go"
+	"github.com/tamalsaha/nats-hop-demo/shared"
 	"github.com/tamalsaha/nats-hop-demo/transport"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,7 +26,7 @@ import (
 func main() {
 	http.Get("")
 
-	nc, err := nats.Connect(nats.DefaultURL)
+	nc, err := nats.Connect(shared.NATS_URL)
 	if err != nil {
 		klog.Fatalln(err)
 	}
@@ -53,20 +54,31 @@ func main() {
 		panic(err)
 	}
 
-	// needs to be updated for each GVR
-	if err := setConfigDefaults(c2); err != nil {
-		panic(err)
-	}
-	rc, err := transport.RESTClientFor(c2)
-	if err != nil {
-		panic(err)
-	}
+	//// needs to be updated for each GVR
+	//if err := setConfigDefaults(c2); err != nil {
+	//	panic(err)
+	//}
+	//rc, err := transport.RESTClientFor(c2)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//kc := kubernetes.New(rc)
 
-	nodes, err := kubernetes.New(rc).CoreV1().Pods("kube-system").List(context.TODO(), metav1.ListOptions{})
+	kc := kubernetes.NewForConfigOrDie(c2)
+
+	nodes, err := kc.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}
 	for _, n := range nodes.Items {
+		fmt.Println(n.Name)
+	}
+
+	deploys, err := kc.AppsV1().Deployments("kube-system").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err)
+	}
+	for _, n := range deploys.Items {
 		fmt.Println(n.Name)
 	}
 }

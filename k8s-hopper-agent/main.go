@@ -31,8 +31,7 @@ var pool = sync.Pool{
 }
 
 func main() {
-	fmt.Println(shared.NATS_URL)
-	nc, err := nats.Connect(nats.DefaultURL)
+	nc, err := nats.Connect(shared.NATS_URL)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
