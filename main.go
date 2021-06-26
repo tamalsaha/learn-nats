@@ -9,8 +9,8 @@ import (
 	"github.com/tamalsaha/nats-hop-demo/transport"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-	coreclient "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
@@ -61,9 +61,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	cc := coreclient.New(rc)
 
-	nodes, err := cc.Nodes().List(context.TODO(), metav1.ListOptions{})
+	nodes, err := kubernetes.New(rc).CoreV1().Pods("kube-system").List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}
