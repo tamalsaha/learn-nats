@@ -38,7 +38,7 @@ func main() {
 
 	masterURL := ""
 	kubeconfigPath := filepath.Join(homedir.HomeDir(), ".kube", "config")
-	kubeconfigPath = "/home/tamal/Downloads/kind-config-kind"
+	// kubeconfigPath = "/home/tamal/Downloads/config"
 
 	config, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfigPath)
 	if err != nil {
