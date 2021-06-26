@@ -73,7 +73,7 @@ func (rt *NatsTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 		Request:            buf.Bytes(),
 		TLS:                rt.TLS,
 		Timeout:            max(0, timeout-500*time.Millisecond),
-		DisableCompression: rt.DisableCompression, // transport.Config
+		DisableCompression: rt.DisableCompression,
 	}
 	buf.Reset()
 	if err := json.NewEncoder(buf).Encode(r2); err != nil {
