@@ -5,28 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c0dc91f8-e088-434a-9a49-b39f6dc7b1a0" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/crt/main.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crt_raw/main.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reuse-conn/main.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/shared/lib.go" beforeDir="false" afterPath="$PROJECT_DIR$/shared/lib.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/k8s.io/klog/v2/klog.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/k8s.io/klog/v2/klog.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/vendor/modules.txt" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/modules.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/apiutil/apimachinery.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/apiutil/apimachinery.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/apiutil/dynamicrestmapper.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/apiutil/dynamicrestmapper.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/client.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/client.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/client_cache.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/client_cache.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/dryrun.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/dryrun.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/interfaces.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/interfaces.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/metadata_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/metadata_client.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/namespaced_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/namespaced_client.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/options.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/options.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/typed_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/typed_client.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/unstructured_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/client/unstructured_client.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/internal/objectutil/objectutil.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/internal/objectutil/objectutil.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/log/deleg.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/log/deleg.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/log/null.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/log/null.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/log/warning_handler.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/sigs.k8s.io/controller-runtime/pkg/log/warning_handler.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -70,7 +54,7 @@
     <property name="last_opened_file_path" value="$USER_HOME$" />
     <property name="settings.editor.selected.configurable" value="preferences.keymap" />
   </component>
-  <component name="RunManager" selected="Go Build.go build github.com/tamalsaha/nats-hop-demo/crt">
+  <component name="RunManager" selected="Go Build.go build github.com/tamalsaha/nats-hop-demo/reuse-conn">
     <configuration name="go build github.com/tamalsaha/nats-hop-demo" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
       <module name="nats-hop-demo" />
       <working_directory value="$PROJECT_DIR$" />
@@ -98,8 +82,18 @@
       <filePath value="$PROJECT_DIR$/k8s-hopper-agent/main.go" />
       <method v="2" />
     </configuration>
+    <configuration name="go build github.com/tamalsaha/nats-hop-demo/reuse-conn" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+      <module name="nats-hop-demo" />
+      <working_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="github.com/tamalsaha/nats-hop-demo/reuse-conn" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$/reuse-conn/main.go" />
+      <method v="2" />
+    </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Go Build.go build github.com/tamalsaha/nats-hop-demo/reuse-conn" />
         <item itemvalue="Go Build.go build github.com/tamalsaha/nats-hop-demo/crt" />
         <item itemvalue="Go Build.go build github.com/tamalsaha/nats-hop-demo/k8s-hopper-agent" />
         <item itemvalue="Go Build.go build github.com/tamalsaha/nats-hop-demo" />

@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/go-chi/chi/v5 v5.0.3
+	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/nats-io/nats-server/v2 v2.6.3
 	github.com/nats-io/nats.go v1.13.1-0.20211018182449-f2416a8b1483
 	github.com/unrolled/render v1.4.0
