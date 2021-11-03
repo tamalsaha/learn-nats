@@ -80,10 +80,10 @@ func (c *tlsTransportCache) get(config *transport.Config, nc *nats.Conn, sub str
 	if err != nil {
 		return nil, err
 	}
-	// The options didn't require a custom TLS config
-	if tlsConfig == nil && config.Dial == nil && config.Proxy == nil {
-		return http.DefaultTransport, nil
-	}
+	//// The options didn't require a custom TLS config
+	//if tlsConfig == nil && config.Dial == nil && config.Proxy == nil {
+	//	return http.DefaultTransport, nil
+	//}
 
 	rt := &NatsTransport{
 		Conn:               nc,
