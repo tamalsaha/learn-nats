@@ -233,7 +233,15 @@ func (oc *OCSPMonitor) run() {
 	quitCh := s.quitCh
 	s.mu.Unlock()
 
-	defer s.grWG.Done()
+	var doShutdown bool
+	defer func() {
+		// Need to decrement before shuting down, otherwise shutdown
+		// would be stuck waiting on grWG to go down to 0.
+		s.grWG.Done()
+		if doShutdown {
+			s.Shutdown()
+		}
+	}()
 
 	oc.mu.Lock()
 	shutdownOnRevoke := oc.shutdownOnRevoke
@@ -254,7 +262,7 @@ func (oc *OCSPMonitor) run() {
 	} else if err == nil && shutdownOnRevoke {
 		// If resp.Status is ocsp.Revoked, ocsp.Unknown, or any other value.
 		s.Errorf("Found OCSP status for %s certificate at '%s': %s", kind, certFile, ocspStatusString(resp.Status))
-		s.Shutdown()
+		doShutdown = true
 		return
 	}
 
@@ -288,7 +296,7 @@ func (oc *OCSPMonitor) run() {
 		default:
 			s.Errorf("Received OCSP status for %s certificate '%s': %s", kind, certFile, ocspStatusString(n))
 			if shutdownOnRevoke {
-				s.Shutdown()
+				doShutdown = true
 			}
 			return
 		}
@@ -317,7 +325,7 @@ func (srv *Server) NewOCSPMonitor(config *tlsConfigKind) (*tls.Config, *OCSPMoni
 		certFile string
 		caFile   string
 	)
-	if kind == typeStringMap[CLIENT] {
+	if kind == kindStringMap[CLIENT] {
 		tcOpts = opts.tlsConfigOpts
 		if opts.TLSCert != _EMPTY_ {
 			certFile = opts.TLSCert
@@ -333,7 +341,22 @@ func (srv *Server) NewOCSPMonitor(config *tlsConfigKind) (*tls.Config, *OCSPMoni
 
 	// NOTE: Currently OCSP Stapling is enabled only for the first certificate found.
 	var mon *OCSPMonitor
-	for _, cert := range tc.Certificates {
+	for _, currentCert := range tc.Certificates {
+		// Create local copy since this will be used in the GetCertificate callback.
+		cert := currentCert
+
+		// This is normally non-nil, but can still be nil here when in tests
+		// or in some embedded scenarios.
+		if cert.Leaf == nil {
+			if len(cert.Certificate) <= 0 {
+				return nil, nil, fmt.Errorf("no certificate found")
+			}
+			var err error
+			cert.Leaf, err = x509.ParseCertificate(cert.Certificate[0])
+			if err != nil {
+				return nil, nil, fmt.Errorf("error parsing certificate: %v", err)
+			}
+		}
 		var shutdownOnRevoke bool
 		mustStaple := hasOCSPStatusRequest(cert.Leaf)
 		if oc != nil {
@@ -412,7 +435,7 @@ func (srv *Server) NewOCSPMonitor(config *tlsConfigKind) (*tls.Config, *OCSPMoni
 
 		// Check whether need to verify staples from a client connection depending on the type.
 		switch kind {
-		case typeStringMap[ROUTER], typeStringMap[GATEWAY], typeStringMap[LEAF]:
+		case kindStringMap[ROUTER], kindStringMap[GATEWAY], kindStringMap[LEAF]:
 			tc.VerifyConnection = func(s tls.ConnectionState) error {
 				oresp := s.OCSPResponse
 				if oresp == nil {
@@ -491,7 +514,7 @@ func (s *Server) configureOCSP() []*tlsConfigKind {
 	if config := sopts.TLSConfig; config != nil {
 		opts := sopts.tlsConfigOpts
 		o := &tlsConfigKind{
-			kind:      typeStringMap[CLIENT],
+			kind:      kindStringMap[CLIENT],
 			tlsConfig: config,
 			tlsOpts:   opts,
 			apply:     func(tc *tls.Config) { sopts.TLSConfig = tc },
@@ -501,7 +524,7 @@ func (s *Server) configureOCSP() []*tlsConfigKind {
 	if config := sopts.Cluster.TLSConfig; config != nil {
 		opts := sopts.Cluster.tlsConfigOpts
 		o := &tlsConfigKind{
-			kind:      typeStringMap[ROUTER],
+			kind:      kindStringMap[ROUTER],
 			tlsConfig: config,
 			tlsOpts:   opts,
 			apply:     func(tc *tls.Config) { sopts.Cluster.TLSConfig = tc },
@@ -511,7 +534,7 @@ func (s *Server) configureOCSP() []*tlsConfigKind {
 	if config := sopts.LeafNode.TLSConfig; config != nil {
 		opts := sopts.LeafNode.tlsConfigOpts
 		o := &tlsConfigKind{
-			kind:      typeStringMap[LEAF],
+			kind:      kindStringMap[LEAF],
 			tlsConfig: config,
 			tlsOpts:   opts,
 			apply: func(tc *tls.Config) {
@@ -527,19 +550,20 @@ func (s *Server) configureOCSP() []*tlsConfigKind {
 		}
 		configs = append(configs, o)
 	}
-	for i, remote := range sopts.LeafNode.Remotes {
-		opts := remote.tlsConfigOpts
+	for _, remote := range sopts.LeafNode.Remotes {
 		if config := remote.TLSConfig; config != nil {
+			// Use a copy of the remote here since will be used
+			// in the apply func callback below.
+			r, opts := remote, remote.tlsConfigOpts
 			o := &tlsConfigKind{
-				kind:      typeStringMap[LEAF],
+				kind:      kindStringMap[LEAF],
 				tlsConfig: config,
 				tlsOpts:   opts,
 				apply: func(tc *tls.Config) {
 					// GetCertificate is used by a server to send the server cert to a
 					// client. We're a client, so we must not set this.
 					tc.GetCertificate = nil
-
-					sopts.LeafNode.Remotes[i].TLSConfig = tc
+					r.TLSConfig = tc
 				},
 			}
 			configs = append(configs, o)
@@ -548,22 +572,22 @@ func (s *Server) configureOCSP() []*tlsConfigKind {
 	if config := sopts.Gateway.TLSConfig; config != nil {
 		opts := sopts.Gateway.tlsConfigOpts
 		o := &tlsConfigKind{
-			kind:      typeStringMap[GATEWAY],
+			kind:      kindStringMap[GATEWAY],
 			tlsConfig: config,
 			tlsOpts:   opts,
 			apply:     func(tc *tls.Config) { sopts.Gateway.TLSConfig = tc },
 		}
 		configs = append(configs, o)
 	}
-	for i, remote := range sopts.Gateway.Gateways {
-		opts := remote.tlsConfigOpts
+	for _, remote := range sopts.Gateway.Gateways {
 		if config := remote.TLSConfig; config != nil {
+			gw, opts := remote, remote.tlsConfigOpts
 			o := &tlsConfigKind{
-				kind:      typeStringMap[GATEWAY],
+				kind:      kindStringMap[GATEWAY],
 				tlsConfig: config,
 				tlsOpts:   opts,
 				apply: func(tc *tls.Config) {
-					sopts.Gateway.Gateways[i].TLSConfig = tc
+					gw.TLSConfig = tc
 				},
 			}
 			configs = append(configs, o)
