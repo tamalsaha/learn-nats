@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"k8s.io/klog/v2"
+	"kmodules.xyz/client-go/tools/clusterid"
 )
 
 func main() {
@@ -49,12 +50,17 @@ func main() {
 	// k8s.io/client-go/rest/config.go
 	// k8s.io/client-go/transport/transport.go # TLSConfigFor
 
+	uid, err := clusterid.ClusterUID(kubernetes.NewForConfigOrDie(config).CoreV1().Namespaces())
+	if err != nil {
+		panic(err)
+	}
+
 	c2 := rest.CopyConfig(config)
 	cfg, err := c2.TransportConfig()
 	if err != nil {
 		panic(err)
 	}
-	c2.Transport, err = transport.New(cfg, nc, "k8s", 10000*time.Second)
+	c2.Transport, err = transport.New(cfg, nc, "proxy."+uid, 10000*time.Second)
 	if err != nil {
 		panic(err)
 	}
