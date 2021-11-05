@@ -6,9 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="c0dc91f8-e088-434a-9a49-b39f6dc7b1a0" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crt/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/crt/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/k8s-hopper-agent/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/k8s-hopper-agent/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/modules.txt" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/modules.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
