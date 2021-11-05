@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,13 +20,12 @@ import (
 	"github.com/tamalsaha/nats-hop-demo/transport"
 	"github.com/unrolled/render"
 	"go.wandrs.dev/binding"
-	core "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog/v2"
 	"k8s.io/klog/v2/klogr"
+	cu "kmodules.xyz/client-go/client"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -37,15 +35,6 @@ var pool = sync.Pool{
 	New: func() interface{} {
 		return new(bytes.Buffer)
 	},
-}
-
-func ClusterUID(c client.Client) (string, error) {
-	var ns core.Namespace
-	err := c.Get(context.TODO(), client.ObjectKey{Name: metav1.NamespaceSystem}, &ns)
-	if err != nil {
-		return "", err
-	}
-	return string(ns.UID), nil
 }
 
 func main() {
@@ -76,7 +65,7 @@ func main() {
 		panic(err)
 	}
 
-	uid, err := ClusterUID(c)
+	uid, err := cu.ClusterUID(c)
 
 	_, err = nc.QueueSubscribe("proxy."+uid, "proxy."+uid, func(msg *nats.Msg) {
 		r2, req, resp, err := respond(msg.Data)

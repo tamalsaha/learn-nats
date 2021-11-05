@@ -9,7 +9,6 @@ import (
 	"github.com/tamalsaha/nats-hop-demo/shared"
 	"github.com/tamalsaha/nats-hop-demo/transport"
 	core "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -25,15 +24,6 @@ var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 )
-
-func ClusterUID(c client.Client) (string, error) {
-	var ns core.Namespace
-	err := c.Get(context.TODO(), client.ObjectKey{Name: metav1.NamespaceSystem}, &ns)
-	if err != nil {
-		return "", err
-	}
-	return string(ns.UID), nil
-}
 
 func main() {
 	if err := run(); err != nil {
