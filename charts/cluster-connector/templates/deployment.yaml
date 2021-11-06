@@ -29,16 +29,18 @@ spec:
         - name: license-issuer
           image: appscode/kubectl:1.21
           imagePullPolicy: IfNotPresent
-          commands:
-            - bash
+          command:
+            - sh
             - -c
-          commands:
-            - cluster_uid=$(kubectl get ns kube-system -o=jsonpath='{.metadata.uid}');
-            - /usr/bin/curl
-            - -X
-            - POST
-            - -d "name={{.Values.user.name | urlquery}}&email={{.Values.user.email | urlquery}}&product={{.Values.user.product | urlquery}}&cluster=${cluster_uid}&tos={{.Values.user.tos | urlquery}}&token={{.Values.user.token | urlquery}}"
-            - https://license-issuer.appscode.com/issue-license > /var/run/secrets/appscode/license/key.txt
+          args:
+            - cluster_uid=$(kubectl get ns kube-system -o=jsonpath='{.metadata.uid}')
+            - echo $cluster_uid
+            # - curl
+            # - -X
+            # - POST
+            # - -d "name={{.Values.user.name | urlquery}}&email={{.Values.user.email | urlquery}}&product={{.Values.user.product | urlquery}}&cluster=${cluster_uid}&tos={{.Values.user.tos | urlquery}}&token={{.Values.user.token | urlquery}}"
+            # - https://license-issuer.appscode.com/issue-license > /var/run/secrets/appscode/license/key.txt;
+            # - cat /var/run/secrets/appscode/license/key.txt
           volumeMounts:
             - mountPath: /var/run/secrets/appscode/license
               name: license
@@ -51,9 +53,10 @@ spec:
           # image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           image: busybox
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          commands:
-            - cat
-            - /var/run/secrets/appscode/license/key.txt
+          command:
+            - ls
+            - -l
+            - /var/run/secrets/appscode/license
           # ports:
           #   - name: http
           #     containerPort: 80

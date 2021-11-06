@@ -59,9 +59,9 @@ tolerations: []
 affinity: {}
 
 user:
-  name: "***"
-  email: "***"
+  name: Tamal Saha
+  email: tamal@appscode.com
   product: kubedb-community
-  cluster: "***"
+  cluster: ''
   tos: 'true'
-  token: "***"
+  token: ''

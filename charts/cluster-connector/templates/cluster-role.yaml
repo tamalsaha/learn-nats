@@ -6,5 +6,6 @@ metadata:
     {{- include "cluster-connector.labels" . | nindent 4 }}
 rules:
 - apiGroups: [""]
-  resources: ["nodes"]
-  verbs: ["get", "list"]
+  resources: ["namespaces"]
+  resourceNames: ["kube-system"]
+  verbs: ["get"]
