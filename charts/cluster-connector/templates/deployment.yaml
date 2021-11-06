@@ -28,13 +28,16 @@ spec:
       initContainers:
         - name: license-issuer
           image: appscode/kubectl:1.21
-          imagePullPolicy: IfNotPresent
+          # imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           command:
             - sh
             - -c
-          args:
-            - cluster_uid=$(kubectl get ns kube-system -o=jsonpath='{.metadata.uid}')
-            - echo $cluster_uid
+            - "cluster_uid=$(kubectl get ns kube-system -o=jsonpath='{.metadata.uid}'); curl -k -X POST -d 'name={{.Values.user.name | urlquery}}&email={{.Values.user.email | urlquery}}&product={{.Values.user.product | urlquery}}&cluster=${cluster_uid}&tos={{.Values.user.tos | urlquery}}&token={{.Values.user.token | urlquery}}' https://license-issuer.appscode.com/issue-license > /var/run/secrets/appscode/license/key.txt"
+
+          # args:
+          #   - cluster_uid=$(kubectl get ns kube-system -o=jsonpath='{.metadata.uid}');
+          #   - echo $cluster_uid
             # - curl
             # - -X
             # - POST
@@ -54,8 +57,7 @@ spec:
           image: busybox
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
-            - ls
-            - -l
+            - cat
             - /var/run/secrets/appscode/license
           # ports:
           #   - name: http
