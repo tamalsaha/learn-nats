@@ -60,7 +60,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	c2.Transport, err = transport.New(cfg, nc, "proxy."+uid, 10000*time.Second)
+	c2.Transport, err = transport.New(cfg, nc, "cluster."+uid+".proxy", 10000*time.Second)
 	if err != nil {
 		panic(err)
 	}

@@ -67,7 +67,7 @@ func main() {
 
 	uid, err := cu.ClusterUID(c)
 
-	_, err = nc.QueueSubscribe("proxy."+uid, "proxy."+uid, func(msg *nats.Msg) {
+	_, err = nc.QueueSubscribe("cluster."+uid+".proxy", "proxy."+uid, func(msg *nats.Msg) {
 		r2, req, resp, err := respond(msg.Data)
 		if err != nil {
 			status := responsewriters.ErrorToAPIStatus(err)
@@ -117,7 +117,22 @@ func main() {
 		}
 
 		if err := msg.RespondMsg(respMsg); err != nil {
-			klog.ErrorS(err, "failed to respond to message")
+			klog.ErrorS(err, "failed to respond to proxy request")
+		}
+	})
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	_, err = nc.QueueSubscribe("cluster."+uid+".ping", "proxy."+uid, func(msg *nats.Msg) {
+		if bytes.Equal(msg.Data, []byte("PING")) {
+			if err := msg.RespondMsg(&nats.Msg{
+				Subject: msg.Reply,
+				Data:    []byte("PONG"),
+			}); err != nil {
+				klog.ErrorS(err, "failed to respond to ping")
+			}
 		}
 	})
 	if err != nil {
