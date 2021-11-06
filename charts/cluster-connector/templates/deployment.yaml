@@ -47,10 +47,9 @@ spec:
           image: busybox
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
-            - cat
-            - /var/run/secrets/appscode/license/key.txt;
-            - sleep
-            - 3600
+            - sh
+            - -c
+            - "cat /var/run/secrets/appscode/license/key.txt; sleep 3600"
           # ports:
           #   - name: http
           #     containerPort: 80
