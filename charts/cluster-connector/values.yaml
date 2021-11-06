@@ -57,3 +57,11 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+user:
+  name: "***"
+  email: "***"
+  product: kubedb-community
+  cluster: "***"
+  tos: 'true'
+  token: "***"
