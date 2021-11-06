@@ -33,17 +33,7 @@ spec:
           command:
             - sh
             - -c
-            - "cluster_uid=$(kubectl get ns kube-system -o=jsonpath='{.metadata.uid}');curl -X POST -d 'name={{.Values.user.name | urlquery}}&email={{.Values.user.email | urlquery}}&product={{.Values.user.product | urlquery}}&cluster=${cluster_uid}&tos={{.Values.user.tos | urlquery}}&token={{.Values.user.token | urlquery}}' https://license-issuer.appscode.com/issue-license > /var/run/secrets/appscode/license/key.txt"
-
-          # args:
-          #   - cluster_uid=$(kubectl get ns kube-system -o=jsonpath='{.metadata.uid}');
-          #   - echo $cluster_uid
-            # - curl
-            # - -X
-            # - POST
-            # - -d "name={{.Values.user.name | urlquery}}&email={{.Values.user.email | urlquery}}&product={{.Values.user.product | urlquery}}&cluster=${cluster_uid}&tos={{.Values.user.tos | urlquery}}&token={{.Values.user.token | urlquery}}"
-            # - https://license-issuer.appscode.com/issue-license > /var/run/secrets/appscode/license/key.txt;
-            # - cat /var/run/secrets/appscode/license/key.txt
+            - "cluster_uid=$(kubectl get ns kube-system -o=jsonpath='{.metadata.uid}');curl -X POST -d \"name={{.Values.user.name | urlquery}}&email={{.Values.user.email | urlquery}}&product={{.Values.user.product | urlquery}}&cluster=${cluster_uid}&tos={{.Values.user.tos | urlquery}}&token={{.Values.user.token | urlquery}}\" https://license-issuer.appscode.com/issue-license > /var/run/secrets/appscode/license/key.txt"
           volumeMounts:
             - mountPath: /var/run/secrets/appscode/license
               name: license
@@ -58,7 +48,9 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             - cat
-            - /var/run/secrets/appscode/license/key.txt
+            - /var/run/secrets/appscode/license/key.txt;
+            - sleep
+            - 3600
           # ports:
           #   - name: http
           #     containerPort: 80
