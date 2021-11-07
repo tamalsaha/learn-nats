@@ -8,7 +8,6 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/nats-io/nats-server/v2 v2.6.3
 	github.com/nats-io/nats.go v1.13.1-0.20211018182449-f2416a8b1483
-	github.com/spf13/pflag v1.0.5
 	github.com/unrolled/render v1.4.0
 	go.bytebuilders.dev/audit v0.0.12-0.20211107052438-17b6e0a0bcbe
 	go.wandrs.dev/binding v0.0.2
@@ -156,6 +155,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/cobra v1.1.3 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect

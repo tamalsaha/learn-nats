@@ -34,10 +34,10 @@ func main() {
 
 	order := newOrder(url, name, version)
 
-	order.UID = types.UID(ulids.MustNew().String()) // using ulids instead of UUID
+	// order.UID = types.UID(ulids.MustNew().String()) // using ulids instead of UUID
 	GenerateYAMLScript(bs, order)
 
-	order.UID = types.UID(ulids.MustNew().String()) // using ulids instead of UUID
+	// order.UID = types.UID(ulids.MustNew().String()) // using ulids instead of UUID
 	GenerateHelm3Script(bs, order)
 }
 
@@ -48,7 +48,7 @@ func newOrder(url, name, version string) v1alpha1.Order {
 			Kind:       v1alpha1.ResourceKindOrder,
 		}, ObjectMeta: metav1.ObjectMeta{
 			Name: name,
-			// UID:               types.UID(ulids.MustNew().String()), // using ulids instead of UUID
+			UID:               types.UID(ulids.MustNew().String()), // using ulids instead of UUID
 			CreationTimestamp: metav1.NewTime(time.Now()),
 		},
 		Spec: v1alpha1.OrderSpec{
@@ -61,7 +61,7 @@ func newOrder(url, name, version string) v1alpha1.Order {
 						},
 						Version:     version,
 						ReleaseName: name,
-						Namespace:   metav1.NamespaceDefault, // change to kubeops or bytebuilders?
+						Namespace:   "kubeops", // change to kubeops or bytebuilders?
 						Bundle:      nil,
 						ValuesFile:  "values.yaml",
 						ValuesPatch: nil,
