@@ -3,21 +3,17 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"gomodules.xyz/ulids"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"time"
 
-	"github.com/google/uuid"
-	flag "github.com/spf13/pflag"
 	"gomodules.xyz/blobfs/testing"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	"kubepack.dev/kubepack/apis/kubepack/v1alpha1"
 	"kubepack.dev/kubepack/pkg/lib"
 )
 
-var (
-	file = "artifacts/kubedb-community/order.yaml"
-)
 var (
 	url     = "https://charts.appscode.com/stable"
 	name    = "cert-manager-csi-driver-cacerts"
@@ -31,26 +27,18 @@ const (
 )
 
 func main() {
-	flag.StringVar(&file, "file", file, "Path to Order file")
-	flag.Parse()
-
 	bs, err := NewTestBlobStore()
 	if err != nil {
 		klog.Fatal(err)
 	}
 
 	order := newOrder(url, name, version)
-	order.UID = types.UID(uuid.New().String())
 
-	scripts, err := lib.GenerateYAMLScript(bs, lib.DefaultRegistry, order)
-	if err != nil {
-		klog.Fatal(err)
-	}
-	data, err := json.MarshalIndent(scripts, "", "  ")
-	if err != nil {
-		klog.Fatal(err)
-	}
-	fmt.Println(string(data))
+	order.UID = types.UID(ulids.MustNew().String()) // using ulids instead of UUID
+	GenerateYAMLScript(bs, order)
+
+	order.UID = types.UID(ulids.MustNew().String()) // using ulids instead of UUID
+	GenerateHelm3Script(bs, order)
 }
 
 func newOrder(url, name, version string) v1alpha1.Order {
@@ -59,8 +47,8 @@ func newOrder(url, name, version string) v1alpha1.Order {
 			APIVersion: v1alpha1.SchemeGroupVersion.String(),
 			Kind:       v1alpha1.ResourceKindOrder,
 		}, ObjectMeta: metav1.ObjectMeta{
-			Name:              name,
-			UID:               types.UID(uuid.New().String()),
+			Name: name,
+			// UID:               types.UID(ulids.MustNew().String()), // using ulids instead of UUID
 			CreationTimestamp: metav1.NewTime(time.Now()),
 		},
 		Spec: v1alpha1.OrderSpec{
@@ -87,18 +75,19 @@ func newOrder(url, name, version string) v1alpha1.Order {
 	}
 }
 
-func main_helm3() {
-	flag.StringVar(&file, "file", file, "Path to Order file")
-	flag.Parse()
-
-	bs, err := NewTestBlobStore()
+func GenerateYAMLScript(bs *lib.BlobStore, order v1alpha1.Order) {
+	scripts, err := lib.GenerateYAMLScript(bs, lib.DefaultRegistry, order)
 	if err != nil {
 		klog.Fatal(err)
 	}
+	data, err := json.MarshalIndent(scripts, "", "  ")
+	if err != nil {
+		klog.Fatal(err)
+	}
+	fmt.Println(string(data))
+}
 
-	order := newOrder(url, name, version)
-	order.UID = types.UID(uuid.New().String())
-
+func GenerateHelm3Script(bs *lib.BlobStore, order v1alpha1.Order) {
 	scripts, err := lib.GenerateHelm3Script(bs, lib.DefaultRegistry, order)
 	if err != nil {
 		klog.Fatal(err)
