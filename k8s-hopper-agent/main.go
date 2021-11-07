@@ -67,7 +67,7 @@ func main() {
 
 	uid, err := cu.ClusterUID(c)
 
-	_, err = nc.QueueSubscribe("cluster."+uid+".proxy", "proxy."+uid, func(msg *nats.Msg) {
+	_, err = nc.QueueSubscribe(shared.ProxyHandlerSubject(uid), "proxy."+uid, func(msg *nats.Msg) {
 		r2, req, resp, err := respond(msg.Data)
 		if err != nil {
 			status := responsewriters.ErrorToAPIStatus(err)
@@ -125,7 +125,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	_, err = nc.QueueSubscribe("cluster."+uid+".ping", "proxy."+uid, func(msg *nats.Msg) {
+	_, err = nc.QueueSubscribe(shared.ProxyStatusSubject(uid), "proxy."+uid, func(msg *nats.Msg) {
 		if bytes.Equal(msg.Data, []byte("PING")) {
 			if err := msg.RespondMsg(&nats.Msg{
 				Subject: msg.Reply,
