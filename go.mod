@@ -24,7 +24,6 @@ require (
 	kmodules.xyz/client-go v0.0.0-20211104042400-058d85ff4318
 	kubepack.dev/kubepack v0.3.5-0.20211107201656-b49d91b5e15a
 	sigs.k8s.io/controller-runtime v0.9.0
-	sigs.k8s.io/yaml v1.2.0
 )
 
 require (
@@ -218,6 +217,7 @@ require (
 	sigs.k8s.io/kustomize/api v0.8.8 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.10.17 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.2 // indirect
+	sigs.k8s.io/yaml v1.2.0 // indirect
 )
 
 replace k8s.io/client-go => github.com/kmodules/k8s-client-go v0.21.2-0.20210626063127-9ea1a0e30c24
