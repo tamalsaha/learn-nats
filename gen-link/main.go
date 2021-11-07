@@ -121,6 +121,7 @@ func genLink(fs *blobfs.BlobFS, u User, kubeconfigBytes []byte) error {
 		User:       u,
 		Kubeconfig: kubeconfigBytes,
 	}
+	// save link info in the database
 	return nil
 }
 
