@@ -19,6 +19,7 @@ package lib
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -44,7 +45,6 @@ import (
 	_ "gocloud.dev/blob/fileblob"
 	_ "gocloud.dev/blob/gcsblob"
 	_ "gocloud.dev/blob/s3blob"
-	"gomodules.xyz/encoding/json"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -356,26 +356,21 @@ func (x *Helm3CommandPrinter) Do() error {
 	}
 
 	if x.ValuesPatch != nil {
-		// unmarshal values so that integer numbers are properly unmarshaled using gomodules.xyz/encoding/json
-		for _, f := range chrt.Raw {
-			if f.Name == chartutil.ValuesfileName {
-				if err := yamllib.Unmarshal(f.Data, &chrt.Values); err != nil {
-					return fmt.Errorf("cannot load %s. Reason: %v", f.Name, err.Error())
-				}
-				break
-			}
-		}
+		vals := chrt.Values
 
-		valueFile := chartutil.ValuesfileName
 		if x.ValuesFile != "" {
-			valueFile = x.ValuesFile
-		}
-		var values []byte
-		for _, f := range chrt.Raw {
-			if f.Name == valueFile {
-				values = f.Data
-				break
+			for _, f := range chrt.Raw {
+				if f.Name == x.ValuesFile {
+					if err := yamllib.Unmarshal(f.Data, &vals); err != nil {
+						return fmt.Errorf("cannot load %s. Reason: %v", f.Name, err.Error())
+					}
+					break
+				}
 			}
+		}
+		values, err := json.Marshal(vals)
+		if err != nil {
+			return err
 		}
 
 		patchData, err := json.Marshal(x.ValuesPatch)

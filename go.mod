@@ -22,7 +22,7 @@ require (
 	k8s.io/client-go v0.21.1
 	k8s.io/klog/v2 v2.8.0
 	kmodules.xyz/client-go v0.0.0-20211104042400-058d85ff4318
-	kubepack.dev/kubepack v0.3.5-0.20211108034045-2ce812d6477e
+	kubepack.dev/kubepack v0.3.5-0.20211108034731-574713ec1a3c
 	sigs.k8s.io/controller-runtime v0.9.0
 )
 
@@ -185,7 +185,6 @@ require (
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	golang.org/x/tools v0.1.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
-	gomodules.xyz/encoding v0.0.2 // indirect
 	gomodules.xyz/jsonpath v0.0.1 // indirect
 	gomodules.xyz/pointer v0.1.0 // indirect
 	gomodules.xyz/sync v0.1.0 // indirect
