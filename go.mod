@@ -12,7 +12,7 @@ require (
 	go.bytebuilders.dev/audit v0.0.12-0.20211107052438-17b6e0a0bcbe
 	go.wandrs.dev/binding v0.0.2
 	golang.org/x/oauth2 v0.0.0-20201203001011-0b49973bad19
-	gomodules.xyz/blobfs v0.1.8
+	gomodules.xyz/blobfs v0.1.10
 	gomodules.xyz/cert v1.4.1
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	gomodules.xyz/ulids v0.1.0
@@ -22,7 +22,7 @@ require (
 	k8s.io/client-go v0.21.1
 	k8s.io/klog/v2 v2.8.0
 	kmodules.xyz/client-go v0.0.0-20211107190155-5bb4090d2728
-	kubepack.dev/kubepack v0.3.7
+	kubepack.dev/kubepack v0.3.8-0.20211108221421-b27ae68c0579
 	sigs.k8s.io/controller-runtime v0.9.0
 )
 

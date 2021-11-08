@@ -16,15 +16,15 @@ type BlobFS struct {
 	storageURL string
 }
 
-func New(storageURL string) *BlobFS {
+func New(storageURL string) Interface {
 	return &BlobFS{storageURL: storageURL}
 }
 
-func NewInMemoryFS() *BlobFS {
+func NewInMemoryFS() Interface {
 	return New("mem://")
 }
 
-func NewOsFs() *BlobFS {
+func NewOsFs() Interface {
 	return New("file:///")
 }
 

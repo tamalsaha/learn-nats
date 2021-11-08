@@ -148,7 +148,7 @@ func NewTestBlobStore() (*lib.BlobStore, error) {
 		return nil, err
 	}
 	return &lib.BlobStore{
-		BlobFS: fs,
+		Interface: fs,
 		Host:   ConnectorLinkHost,
 		Bucket: ConnectorLinkManifestBucket,
 	}, nil

@@ -8,7 +8,12 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gen-installer/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen-installer/main.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gen-link/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen-link/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/url-gen/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/url-gen/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/gomodules.xyz/blobfs/lib.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/gomodules.xyz/blobfs/lib.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/gomodules.xyz/blobfs/testing/lib.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/gomodules.xyz/blobfs/testing/lib.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/blob.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/blob.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/modules.txt" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/modules.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -147,31 +152,6 @@
           <url>file://$PROJECT_DIR$/gen-installer/main.go</url>
           <line>89</line>
           <option name="timeStamp" value="3" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
-          <url>file://$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/executors.go</url>
-          <line>352</line>
-          <option name="timeStamp" value="10" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
-          <url>file://$PROJECT_DIR$/vendor/kubepack.dev/lib-helm/pkg/chart/lib.go</url>
-          <line>25</line>
-          <option name="timeStamp" value="12" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
-          <url>file://$PROJECT_DIR$/vendor/kubepack.dev/lib-helm/pkg/chart/lib.go</url>
-          <line>20</line>
-          <option name="timeStamp" value="13" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
-          <url>file://$PROJECT_DIR$/vendor/kubepack.dev/lib-helm/pkg/chart/lib.go</url>
-          <line>24</line>
-          <option name="timeStamp" value="14" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
-          <url>file://$PROJECT_DIR$/vendor/kubepack.dev/lib-helm/pkg/chart/lib.go</url>
-          <line>82</line>
-          <option name="timeStamp" value="19" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

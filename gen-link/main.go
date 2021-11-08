@@ -108,7 +108,7 @@ func main_() {
 	}
 }
 
-func genLink(fs *blobfs.BlobFS, u User, kubeconfigBytes []byte) error {
+func genLink(fs blobfs.Interface, u User, kubeconfigBytes []byte) error {
 	domain := Domain(u.Email)
 	now := time.Now()
 	timestamp := []byte(now.UTC().Format(time.RFC3339))
@@ -140,7 +140,7 @@ func genLink(fs *blobfs.BlobFS, u User, kubeconfigBytes []byte) error {
 	return nil
 }
 
-func handleCallback(fs *blobfs.BlobFS, nc *nats.Conn, in CallbackRequest) error {
+func handleCallback(fs blobfs.Interface, nc *nats.Conn, in CallbackRequest) error {
 	link, found := links[in.LinkID]
 	if !found {
 		return fmt.Errorf("unknown link id %q", in.LinkID)

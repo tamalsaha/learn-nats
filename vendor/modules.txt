@@ -851,7 +851,7 @@ golang.org/x/tools/internal/typesinternal
 ## explicit; go 1.11
 golang.org/x/xerrors
 golang.org/x/xerrors/internal
-# gomodules.xyz/blobfs v0.1.8
+# gomodules.xyz/blobfs v0.1.10
 ## explicit; go 1.14
 gomodules.xyz/blobfs
 gomodules.xyz/blobfs/testing
@@ -1543,7 +1543,7 @@ kmodules.xyz/resource-metadata/pkg/graph
 # kmodules.xyz/resource-metrics v0.0.5
 ## explicit; go 1.17
 kmodules.xyz/resource-metrics/api
-# kubepack.dev/kubepack v0.3.7
+# kubepack.dev/kubepack v0.3.8-0.20211108221421-b27ae68c0579
 ## explicit; go 1.17
 kubepack.dev/kubepack/apis
 kubepack.dev/kubepack/apis/kubepack
