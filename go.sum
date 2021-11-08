@@ -1458,8 +1458,8 @@ kmodules.xyz/resource-metadata v0.6.7/go.mod h1:BGy9IyQG13z6ArdexZ7gguVrNspLxa1f
 kmodules.xyz/resource-metrics v0.0.5 h1:an1eaxw8mWX5RfujUMTTkJPGiMlQQUDzT6aveSGNAq8=
 kmodules.xyz/resource-metrics v0.0.5/go.mod h1:6Dv63HDgp83DhA+lZNB7GIQR6PLjNrYW6ghQKioQzII=
 kmodules.xyz/webhook-runtime v0.0.0-20210928141616-7f73c2ab318a/go.mod h1:MFZFmJk9IXNHwq8JlF/mukwBDbopFQj4swaB2MWHc/U=
-kubepack.dev/kubepack v0.3.8-0.20211108221421-b27ae68c0579 h1:FFOjG3aj6NbRnKO4rAaL3gS+7zhztsiKU9AbADuuadc=
-kubepack.dev/kubepack v0.3.8-0.20211108221421-b27ae68c0579/go.mod h1:tMn/cGcnjY6pOXHEI0q/fBo6AnCmMY4/kNQdBL905XY=
+kubepack.dev/kubepack v0.3.8 h1:eTJhS1AuhrkD59mS4K3w1QCtfa2kSMTHlZQr9ZLp/kM=
+kubepack.dev/kubepack v0.3.8/go.mod h1:tMn/cGcnjY6pOXHEI0q/fBo6AnCmMY4/kNQdBL905XY=
 kubepack.dev/lib-helm v0.3.1 h1:fo+Hq90VFarucPiLStfeOXw+CeobNIVA8fpwenLIgTs=
 kubepack.dev/lib-helm v0.3.1/go.mod h1:76eIJ8BnBYW+s9qiw8h7ZpzzH/337aS1m/wp5ghH5Jg=
 modernc.org/cc v1.0.0/go.mod h1:1Sk4//wdnYJiUIxnW8ddKpaOJCF37yAdqYnkxUpaYxw=
