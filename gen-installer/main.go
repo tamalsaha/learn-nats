@@ -18,15 +18,15 @@ import (
 
 var (
 	url     = "https://charts.appscode.com/stable"
-	name    = "cert-manager-csi-driver-cacerts"
+	name    = "cluster-connector"
 	version = "" // "v0.1.0"
 )
 
 const (
 	YAMLBucket                   = "gs://connect.bytebuilders.link"
 	YAMLHost                     = "https://connect.bytebuilders.link"
-	GoogleApplicationCredentials = "/Users/tamal/AppsCode/credentials/license-issuer@appscode-domains.json"
-	// GoogleApplicationCredentials = "/personal/AppsCode/credentials/license-issuer@appscode-domains.json"
+	// GoogleApplicationCredentials = "/Users/tamal/AppsCode/credentials/license-issuer@appscode-domains.json"
+	GoogleApplicationCredentials = "/personal/AppsCode/credentials/license-issuer@appscode-domains.json"
 )
 
 func main() {
@@ -74,7 +74,12 @@ func generatePatch() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	ops, err := jsonpatch.CreatePatch([]byte("{}"), data)
+
+	empty, err := json.Marshal(ChartValues{})
+	if err != nil {
+		return nil, err
+	}
+	ops, err := jsonpatch.CreatePatch(empty, data)
 	if err != nil {
 		return nil, err
 	}
