@@ -90,6 +90,7 @@ require (
 	github.com/gobuffalo/flect v0.2.3 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/golang/glog v0.0.0-20210429001901-424d2337a529 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/btree v1.0.0 // indirect
@@ -212,7 +213,7 @@ require (
 	kmodules.xyz/offshoot-api v0.0.0-20210829122105-6f4d481b0c61 // indirect
 	kmodules.xyz/resource-metadata v0.6.7 // indirect
 	kmodules.xyz/resource-metrics v0.0.5 // indirect
-	kubepack.dev/lib-helm v0.2.4-0.20210702135227-03dd8e7b6b0f // indirect
+	kubepack.dev/lib-helm v0.3.1-0.20211108032336-dcb0446586c0 // indirect
 	sigs.k8s.io/application v0.8.2-0.20200306235134-f10d9ca8abd4 // indirect
 	sigs.k8s.io/cli-utils v0.25.0 // indirect
 	sigs.k8s.io/kustomize/api v0.8.8 // indirect

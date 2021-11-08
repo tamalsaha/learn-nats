@@ -4,15 +4,7 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c0dc91f8-e088-434a-9a49-b39f6dc7b1a0" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gen-installer/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen-installer/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/executors.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/executors.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/order.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/order.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/modules.txt" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/modules.txt" afterDir="false" />
-    </list>
+    <list default="true" id="c0dc91f8-e088-434a-9a49-b39f6dc7b1a0" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -52,7 +44,7 @@
     <property name="go.modules.go.list.on.any.changes.was.set" value="true" />
     <property name="go.sdk.automatically.set" value="true" />
     <property name="go.vendoring.notification.had.been.shown" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../../../kubepack.dev/kubepack" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../../../kubepack.dev/lib-helm" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.detected.package.tslint" value="true" />
     <property name="node.js.selected.package.eslint" value="(autodetect)" />
@@ -153,23 +145,8 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/executors.go</url>
-          <line>357</line>
-          <option name="timeStamp" value="6" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
-          <url>file://$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/executors.go</url>
-          <line>370</line>
-          <option name="timeStamp" value="7" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
-          <url>file://$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/executors.go</url>
           <line>396</line>
           <option name="timeStamp" value="10" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
-          <url>file://$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/executors.go</url>
-          <line>392</line>
-          <option name="timeStamp" value="11" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/vendor/kubepack.dev/lib-helm/pkg/chart/lib.go</url>
@@ -185,6 +162,21 @@
           <url>file://$PROJECT_DIR$/vendor/kubepack.dev/lib-helm/pkg/chart/lib.go</url>
           <line>24</line>
           <option name="timeStamp" value="14" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/vendor/kubepack.dev/lib-helm/pkg/chart/lib.go</url>
+          <line>47</line>
+          <option name="timeStamp" value="15" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/vendor/kubepack.dev/lib-helm/pkg/chart/lib.go</url>
+          <line>51</line>
+          <option name="timeStamp" value="16" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/vendor/kubepack.dev/lib-helm/pkg/chart/lib.go</url>
+          <line>60</line>
+          <option name="timeStamp" value="17" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

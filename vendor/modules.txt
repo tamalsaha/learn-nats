@@ -364,6 +364,8 @@ github.com/gogo/protobuf/gogoproto
 github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/protoc-gen-gogo/descriptor
 github.com/gogo/protobuf/sortkeys
+# github.com/golang/glog v0.0.0-20210429001901-424d2337a529
+## explicit
 # github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
 ## explicit
 github.com/golang/groupcache/lru
@@ -1551,7 +1553,7 @@ kubepack.dev/kubepack/apis/kubepack
 kubepack.dev/kubepack/apis/kubepack/v1alpha1
 kubepack.dev/kubepack/crds
 kubepack.dev/kubepack/pkg/lib
-# kubepack.dev/lib-helm v0.2.4-0.20210702135227-03dd8e7b6b0f
+# kubepack.dev/lib-helm v0.3.1-0.20211108032336-dcb0446586c0
 ## explicit; go 1.16
 kubepack.dev/lib-helm/pkg/action
 kubepack.dev/lib-helm/pkg/application
