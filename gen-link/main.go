@@ -45,11 +45,13 @@ type LinkData struct {
 }
 
 type UserValues struct {
-	User struct {
-		Name    string `json:"name"`
-		Email   string `json:"email"`
-		Token   string `json:"token"`
-	} `json:"user"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Token string `json:"token"`
+}
+
+type ChartValues struct {
+	User UserValues `json:"user"`
 }
 
 type VerifyLink struct {
