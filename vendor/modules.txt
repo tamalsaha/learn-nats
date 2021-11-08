@@ -1543,15 +1543,15 @@ kmodules.xyz/resource-metadata/pkg/graph
 # kmodules.xyz/resource-metrics v0.0.5
 ## explicit; go 1.17
 kmodules.xyz/resource-metrics/api
-# kubepack.dev/kubepack v0.3.5-0.20211108034731-574713ec1a3c
+# kubepack.dev/kubepack v0.3.5
 ## explicit; go 1.17
 kubepack.dev/kubepack/apis
 kubepack.dev/kubepack/apis/kubepack
 kubepack.dev/kubepack/apis/kubepack/v1alpha1
 kubepack.dev/kubepack/crds
 kubepack.dev/kubepack/pkg/lib
-# kubepack.dev/lib-helm v0.3.1-0.20211108032336-dcb0446586c0
-## explicit; go 1.16
+# kubepack.dev/lib-helm v0.3.1
+## explicit; go 1.17
 kubepack.dev/lib-helm/pkg/action
 kubepack.dev/lib-helm/pkg/application
 kubepack.dev/lib-helm/pkg/chart

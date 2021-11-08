@@ -22,7 +22,7 @@ require (
 	k8s.io/client-go v0.21.1
 	k8s.io/klog/v2 v2.8.0
 	kmodules.xyz/client-go v0.0.0-20211104042400-058d85ff4318
-	kubepack.dev/kubepack v0.3.5-0.20211108034731-574713ec1a3c
+	kubepack.dev/kubepack v0.3.5
 	sigs.k8s.io/controller-runtime v0.9.0
 )
 
@@ -212,7 +212,7 @@ require (
 	kmodules.xyz/offshoot-api v0.0.0-20210829122105-6f4d481b0c61 // indirect
 	kmodules.xyz/resource-metadata v0.6.7 // indirect
 	kmodules.xyz/resource-metrics v0.0.5 // indirect
-	kubepack.dev/lib-helm v0.3.1-0.20211108032336-dcb0446586c0 // indirect
+	kubepack.dev/lib-helm v0.3.1 // indirect
 	sigs.k8s.io/application v0.8.2-0.20200306235134-f10d9ca8abd4 // indirect
 	sigs.k8s.io/cli-utils v0.25.0 // indirect
 	sigs.k8s.io/kustomize/api v0.8.8 // indirect
