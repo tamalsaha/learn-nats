@@ -76,7 +76,7 @@ func newOrder(url, name, version string) v1alpha1.Order {
 }
 
 func GenerateYAMLScript(bs *lib.BlobStore, order v1alpha1.Order) {
-	scripts, err := lib.GenerateYAMLScript(bs, lib.DefaultRegistry, order)
+	scripts, err := lib.GenerateYAMLScript(bs, lib.DefaultRegistry, order, lib.DisableApplicationCRD)
 	if err != nil {
 		klog.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func GenerateYAMLScript(bs *lib.BlobStore, order v1alpha1.Order) {
 }
 
 func GenerateHelm3Script(bs *lib.BlobStore, order v1alpha1.Order) {
-	scripts, err := lib.GenerateHelm3Script(bs, lib.DefaultRegistry, order)
+	scripts, err := lib.GenerateHelm3Script(bs, lib.DefaultRegistry, order, lib.DisableApplicationCRD)
 	if err != nil {
 		klog.Fatal(err)
 	}
