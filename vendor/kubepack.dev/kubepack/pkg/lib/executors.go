@@ -566,16 +566,6 @@ func (x *YAMLPrinter) Do() error {
 
 	var buf bytes.Buffer
 
-	if !apis.BuiltinNamespaces.Has(x.Namespace) {
-		buf.WriteString(fmt.Sprintf(`apiVersion: v1
-kind: Namespace
-metadata:
-  name: %s
-
----
-`, x.Namespace))
-	}
-
 	chrt, err := x.Registry.GetChart(x.ChartRef.URL, x.ChartRef.Name, x.Version)
 	if err != nil {
 		return err
@@ -717,6 +707,16 @@ metadata:
 	}
 
 	var manifestDoc bytes.Buffer
+
+	if !apis.BuiltinNamespaces.Has(x.Namespace) {
+		manifestDoc.WriteString(fmt.Sprintf(`apiVersion: v1
+kind: Namespace
+metadata:
+  name: %s
+
+---
+`, x.Namespace))
+	}
 
 	for _, hook := range hooks {
 		if libchart.IsEvent(hook.Events, release.HookPreInstall) {
