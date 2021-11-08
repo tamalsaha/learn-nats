@@ -25,8 +25,8 @@ var (
 const (
 	YAMLBucket                   = "gs://connect.bytebuilders.link"
 	YAMLHost                     = "https://connect.bytebuilders.link"
-	// GoogleApplicationCredentials = "/Users/tamal/AppsCode/credentials/license-issuer@appscode-domains.json"
-	GoogleApplicationCredentials = "/personal/AppsCode/credentials/license-issuer@appscode-domains.json"
+	GoogleApplicationCredentials = "/Users/tamal/AppsCode/credentials/license-issuer@appscode-domains.json"
+	// GoogleApplicationCredentials = "/personal/AppsCode/credentials/license-issuer@appscode-domains.json"
 )
 
 func main() {
