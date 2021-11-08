@@ -17,14 +17,14 @@ import (
 )
 
 var (
-	url     = "https://charts.appscode.com/stable"
-	name    = "cluster-connector"
-	version = "" // "v0.1.0"
+	ConnectorChartURL     = "https://charts.appscode.com/stable"
+	ConnectorChartName    = "cluster-connector"
+	ConnectorChartVersion = "" // "v0.1.0"
 )
 
 const (
-	YAMLBucket                   = "gs://connect.bytebuilders.link"
-	YAMLHost                     = "https://connect.bytebuilders.link"
+	ConnectorLinkManifestBucket  = "gs://connect.bytebuilders.link"
+	ConnectorLinkHost            = "https://connect.bytebuilders.link"
 	GoogleApplicationCredentials = "/Users/tamal/AppsCode/credentials/license-issuer@appscode-domains.json"
 	// GoogleApplicationCredentials = "/personal/AppsCode/credentials/license-issuer@appscode-domains.json"
 )
@@ -35,7 +35,7 @@ func main() {
 		klog.Fatal(err)
 	}
 
-	order, err := newOrder(url, name, version)
+	order, err := newOrder(ConnectorChartURL, ConnectorChartName, ConnectorChartVersion)
 	if err != nil {
 		panic(err)
 	}
@@ -97,7 +97,7 @@ func newOrder(url, name, version string) (*v1alpha1.Order, error) {
 			APIVersion: v1alpha1.SchemeGroupVersion.String(),
 			Kind:       v1alpha1.ResourceKindOrder,
 		}, ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Name:              name,
 			UID:               types.UID(ulids.MustNew().String()), // using ulids instead of UUID
 			CreationTimestamp: metav1.NewTime(time.Now()),
 		},
@@ -143,13 +143,13 @@ func GenerateScripts(bs *lib.BlobStore, order *v1alpha1.Order) (map[string]strin
 }
 
 func NewTestBlobStore() (*lib.BlobStore, error) {
-	fs, err := testing.NewTestGCS(YAMLBucket, GoogleApplicationCredentials)
+	fs, err := testing.NewTestGCS(ConnectorLinkManifestBucket, GoogleApplicationCredentials)
 	if err != nil {
 		return nil, err
 	}
 	return &lib.BlobStore{
 		BlobFS: fs,
-		Host:   YAMLHost,
-		Bucket: YAMLBucket,
+		Host:   ConnectorLinkHost,
+		Bucket: ConnectorLinkManifestBucket,
 	}, nil
 }

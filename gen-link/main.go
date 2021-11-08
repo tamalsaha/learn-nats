@@ -35,6 +35,11 @@ type User struct {
 	Email string
 }
 
+type Link struct {
+	LinkID  string            `json:"linkID"`
+	Scripts map[string]string `json:"scripts"`
+}
+
 type LinkData struct {
 	LinkID     string
 	Token      string
@@ -54,7 +59,7 @@ type ChartValues struct {
 	User UserValues `json:"user"`
 }
 
-type VerifyLink struct {
+type CallbackRequest struct {
 	LinkID    string
 	ClusterID string
 }
@@ -62,8 +67,8 @@ type VerifyLink struct {
 var links = map[string]LinkData{}
 
 const (
-	LicenseBucket = "licenses.appscode.com"
-	LinkLifetime  = 10 * time.Minute
+	LicenseBucket         = "licenses.appscode.com"
+	ConnectorLinkLifetime = 10 * time.Minute
 )
 
 func main() {
@@ -89,7 +94,7 @@ func main() {
 }
 
 func main_() {
-	link := VerifyLink{
+	link := CallbackRequest{
 		LinkID:    "****",
 		ClusterID: "***",
 	}
@@ -98,7 +103,7 @@ func main_() {
 	if err != nil {
 		panic(err)
 	}
-	if err := verifyLink(fs, nc, link); err != nil {
+	if err := handleCallback(fs, nc, link); err != nil {
 		panic(err)
 	}
 }
@@ -127,7 +132,7 @@ func genLink(fs *blobfs.BlobFS, u User, kubeconfigBytes []byte) error {
 		LinkID:     linkID,
 		Token:      token.String(),
 		ClusterID:  "", // unknown
-		NotAfter:   now.Add(LinkLifetime),
+		NotAfter:   now.Add(ConnectorLinkLifetime),
 		User:       u,
 		Kubeconfig: kubeconfigBytes,
 	}
@@ -135,7 +140,7 @@ func genLink(fs *blobfs.BlobFS, u User, kubeconfigBytes []byte) error {
 	return nil
 }
 
-func verifyLink(fs *blobfs.BlobFS, nc *nats.Conn, in VerifyLink) error {
+func handleCallback(fs *blobfs.BlobFS, nc *nats.Conn, in CallbackRequest) error {
 	link, found := links[in.LinkID]
 	if !found {
 		return fmt.Errorf("unknown link id %q", in.LinkID)
