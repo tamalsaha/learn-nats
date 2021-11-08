@@ -21,7 +21,7 @@ require (
 	k8s.io/apiserver v0.21.1
 	k8s.io/client-go v0.21.1
 	k8s.io/klog/v2 v2.8.0
-	kmodules.xyz/client-go v0.0.0-20211104042400-058d85ff4318
+	kmodules.xyz/client-go v0.0.0-20211107190155-5bb4090d2728
 	kubepack.dev/kubepack v0.3.7
 	sigs.k8s.io/controller-runtime v0.9.0
 )
@@ -165,7 +165,7 @@ require (
 	github.com/xlab/treeprint v0.0.0-20181112141820-a009c3971eca // indirect
 	github.com/yudai/gojsondiff v1.0.0 // indirect
 	github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82 // indirect
-	go.bytebuilders.dev/license-verifier v0.9.3 // indirect
+	go.bytebuilders.dev/license-verifier v0.9.4-0.20211108200632-086eed601d1a // indirect
 	go.opencensus.io v0.22.5 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	go.uber.org/atomic v1.7.0 // indirect

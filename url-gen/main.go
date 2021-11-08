@@ -12,10 +12,11 @@ func main() {
 		panic(err)
 	}
 
+
 	u1 := *u
 	u1.Path = path.Join(u1.Path, "api/v1/register")
 	fmt.Println(u1.String())
-	
+
 	u.Path = path.Join(u.Path, "api/v1/join")
 	fmt.Println(u.String())
 }
