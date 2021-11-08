@@ -29,11 +29,7 @@ import (
 
 func GenerateYAMLScript(bs *BlobStore, reg *repo.Registry, order v1alpha1.Order, opts ...ScriptOption) ([]ScriptRef, error) {
 	var buf bytes.Buffer
-	_, err := buf.WriteString("#!/usr/bin/env bash\n")
-	if err != nil {
-		return nil, err
-	}
-	_, err = buf.WriteString("set -xeou pipefail\n\n")
+	_, err := buf.WriteString("#!/usr/bin/env sh\n")
 	if err != nil {
 		return nil, err
 	}

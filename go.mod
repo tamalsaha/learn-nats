@@ -14,6 +14,7 @@ require (
 	golang.org/x/oauth2 v0.0.0-20201203001011-0b49973bad19
 	gomodules.xyz/blobfs v0.1.8
 	gomodules.xyz/cert v1.4.1
+	gomodules.xyz/jsonpatch/v2 v2.2.0
 	gomodules.xyz/ulids v0.1.0
 	k8s.io/api v0.21.1
 	k8s.io/apimachinery v0.21.1
@@ -21,7 +22,7 @@ require (
 	k8s.io/client-go v0.21.1
 	k8s.io/klog/v2 v2.8.0
 	kmodules.xyz/client-go v0.0.0-20211104042400-058d85ff4318
-	kubepack.dev/kubepack v0.3.5-0.20211108011047-252ff3a650a6
+	kubepack.dev/kubepack v0.3.5-0.20211108022854-385527cabc56
 	sigs.k8s.io/controller-runtime v0.9.0
 )
 
@@ -183,7 +184,6 @@ require (
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	golang.org/x/tools v0.1.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
-	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	gomodules.xyz/jsonpath v0.0.1 // indirect
 	gomodules.xyz/pointer v0.1.0 // indirect
 	gomodules.xyz/sync v0.1.0 // indirect

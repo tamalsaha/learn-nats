@@ -25,7 +25,8 @@ var (
 const (
 	YAMLBucket                   = "gs://connect.bytebuilders.link"
 	YAMLHost                     = "https://connect.bytebuilders.link"
-	GoogleApplicationCredentials = "/Users/tamal/AppsCode/credentials/license-issuer@appscode-domains.json"
+	// GoogleApplicationCredentials = "/Users/tamal/AppsCode/credentials/license-issuer@appscode-domains.json"
+	GoogleApplicationCredentials = "/personal/AppsCode/credentials/license-issuer@appscode-domains.json"
 )
 
 func main() {
@@ -103,7 +104,7 @@ func newOrder(url, name, version string) (*v1alpha1.Order, error) {
 						ReleaseName: name,
 						Namespace:   "kubeops", // change to kubeops or bytebuilders?
 						Bundle:      nil,
-						ValuesFile:  "values.yaml",
+						// ValuesFile:  "values.yaml",
 						ValuesPatch: &runtime.RawExtension{Raw: patch},
 						Resources:   nil,
 						WaitFors:    nil,

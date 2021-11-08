@@ -358,7 +358,7 @@ func (x *Helm3CommandPrinter) Do() error {
 	if x.ValuesPatch != nil {
 		vals := chrt.Values
 
-		if x.ValuesFile != "" {
+		if x.ValuesFile != "" && x.ValuesFile != chartutil.ValuesfileName {
 			for _, f := range chrt.Raw {
 				if f.Name == x.ValuesFile {
 					if err := yamllib.Unmarshal(f.Data, &vals); err != nil {
@@ -395,131 +395,7 @@ func (x *Helm3CommandPrinter) Do() error {
 			return err
 		}
 		for _, v := range setValues {
-			_, err = fmt.Fprintf(&buf, `%s--set %s \\n`, indent, v)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	buf.Truncate(buf.Len() - 3)
-
-	_, err = buf.WriteRune('\n')
-	if err != nil {
-		return err
-	}
-
-	_, err = buf.WriteTo(x.W)
-	return err
-}
-
-type Helm2CommandPrinter struct {
-	Registry    *repo.Registry
-	ChartRef    v1alpha1.ChartRef
-	Version     string
-	ReleaseName string
-	Namespace   string
-	ValuesFile  string
-	ValuesPatch *runtime.RawExtension
-
-	W io.Writer
-}
-
-func (x *Helm2CommandPrinter) Do() error {
-	chrt, err := x.Registry.GetChart(x.ChartRef.URL, x.ChartRef.Name, x.Version)
-	if err != nil {
-		return err
-	}
-
-	reponame, err := repo.DefaultNamer.Name(x.ChartRef.URL)
-	if err != nil {
-		return err
-	}
-
-	var buf bytes.Buffer
-
-	/*
-		$ helm repo add appscode https://charts.appscode.com/stable/
-		$ helm repo update
-		$ helm search repo appscode/voyager --version v12.0.0-rc.1
-	*/
-	_, err = fmt.Fprintf(&buf, "## add helm repository %s\n", reponame)
-	if err != nil {
-		return err
-	}
-	_, err = fmt.Fprintf(&buf, "helm repo add %s %s\n", reponame, x.ChartRef.URL)
-	if err != nil {
-		return err
-	}
-	_, err = fmt.Fprintf(&buf, "helm repo update\n")
-	if err != nil {
-		return err
-	}
-	_, err = fmt.Fprintf(&buf, "helm search %s/%s --version %s\n", reponame, x.ChartRef.Name, x.Version)
-	if err != nil {
-		return err
-	}
-
-	/*
-		$ helm install voyager-operator appscode/voyager --version v12.0.0-rc.1 \
-		  --namespace kube-system \
-		  --set cloudProvider=$provider
-	*/
-	_, err = fmt.Fprintf(&buf, "## install chart %s/%s\n", reponame, x.ChartRef.Name)
-	if err != nil {
-		return err
-	}
-	_, err = fmt.Fprintf(&buf, "helm install %s/%s --name %s --version %s \\\n", reponame, x.ChartRef.Name, x.ReleaseName, x.Version)
-	if err != nil {
-		return err
-	}
-	if x.Namespace != "" {
-		_, err = fmt.Fprintf(&buf, "%s--namespace %s \\\n", indent, x.Namespace)
-		if err != nil {
-			return err
-		}
-	}
-
-	if x.ValuesPatch != nil {
-		vals := chrt.Values
-
-		if x.ValuesFile != "" {
-			for _, f := range chrt.Raw {
-				if f.Name == x.ValuesFile {
-					if err := yamllib.Unmarshal(f.Data, &vals); err != nil {
-						return fmt.Errorf("cannot load %s. Reason: %v", f.Name, err.Error())
-					}
-					break
-				}
-			}
-		}
-		values, err := json.Marshal(vals)
-		if err != nil {
-			return err
-		}
-
-		patchData, err := json.Marshal(x.ValuesPatch)
-		if err != nil {
-			return err
-		}
-		patch, err := jsonpatch.DecodePatch(patchData)
-		if err != nil {
-			return err
-		}
-		modifiedValues, err := patch.Apply(values)
-		if err != nil {
-			return err
-		}
-		var modified map[string]interface{}
-		err = json.Unmarshal(modifiedValues, &modified)
-		if err != nil {
-			return err
-		}
-		setValues, err := chart2.GetChangedValues(chrt.Values, modified)
-		if err != nil {
-			return err
-		}
-		for _, v := range setValues {
-			_, err = fmt.Fprintf(&buf, `%s--set %s \\n`, indent, v)
+			_, err = fmt.Fprintf(&buf, `%s--set %s \\\n`, indent, v)
 			if err != nil {
 				return err
 			}
@@ -607,7 +483,7 @@ func (x *YAMLPrinter) Do() error {
 
 	vals := chrt.Values
 	if x.ValuesPatch != nil {
-		if x.ValuesFile != "" {
+		if x.ValuesFile != "" && x.ValuesFile != chartutil.ValuesfileName {
 			for _, f := range chrt.Raw {
 				if f.Name == x.ValuesFile {
 					if err := yamllib.Unmarshal(f.Data, &vals); err != nil {
