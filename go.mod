@@ -22,7 +22,7 @@ require (
 	k8s.io/client-go v0.21.1
 	k8s.io/klog/v2 v2.8.0
 	kmodules.xyz/client-go v0.0.0-20211104042400-058d85ff4318
-	kubepack.dev/kubepack v0.3.5-0.20211108024223-786cc0c9e9e7
+	kubepack.dev/kubepack v0.3.5-0.20211108034045-2ce812d6477e
 	sigs.k8s.io/controller-runtime v0.9.0
 )
 

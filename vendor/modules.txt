@@ -1546,7 +1546,7 @@ kmodules.xyz/resource-metadata/pkg/graph
 # kmodules.xyz/resource-metrics v0.0.5
 ## explicit; go 1.17
 kmodules.xyz/resource-metrics/api
-# kubepack.dev/kubepack v0.3.5-0.20211108024223-786cc0c9e9e7
+# kubepack.dev/kubepack v0.3.5-0.20211108034045-2ce812d6477e
 ## explicit; go 1.17
 kubepack.dev/kubepack/apis
 kubepack.dev/kubepack/apis/kubepack

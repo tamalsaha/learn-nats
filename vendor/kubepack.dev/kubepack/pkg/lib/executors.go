@@ -356,21 +356,26 @@ func (x *Helm3CommandPrinter) Do() error {
 	}
 
 	if x.ValuesPatch != nil {
-		vals := chrt.Values
-
-		if x.ValuesFile != "" && x.ValuesFile != chartutil.ValuesfileName {
-			for _, f := range chrt.Raw {
-				if f.Name == x.ValuesFile {
-					if err := yamllib.Unmarshal(f.Data, &vals); err != nil {
-						return fmt.Errorf("cannot load %s. Reason: %v", f.Name, err.Error())
-					}
-					break
+		// unmarshal values so that integer numbers are properly unmarshaled using gomodules.xyz/encoding/json
+		for _, f := range chrt.Raw {
+			if f.Name == chartutil.ValuesfileName {
+				if err := yamllib.Unmarshal(f.Data, &chrt.Values); err != nil {
+					return fmt.Errorf("cannot load %s. Reason: %v", f.Name, err.Error())
 				}
+				break
 			}
 		}
-		values, err := json.Marshal(vals)
-		if err != nil {
-			return err
+
+		valueFile := chartutil.ValuesfileName
+		if x.ValuesFile != "" {
+			valueFile = x.ValuesFile
+		}
+		var values []byte
+		for _, f := range chrt.Raw {
+			if f.Name == valueFile {
+				values = f.Data
+				break
+			}
 		}
 
 		patchData, err := json.Marshal(x.ValuesPatch)
