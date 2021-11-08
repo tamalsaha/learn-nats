@@ -4,7 +4,17 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c0dc91f8-e088-434a-9a49-b39f6dc7b1a0" name="Changes" comment="" />
+    <list default="true" id="c0dc91f8-e088-434a-9a49-b39f6dc7b1a0" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gen-installer/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen-installer/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/helm3.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/helm3.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/script.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/script.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/types.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/types.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/yaml.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/yaml.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/modules.txt" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/modules.txt" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -44,7 +54,7 @@
     <property name="go.modules.go.list.on.any.changes.was.set" value="true" />
     <property name="go.sdk.automatically.set" value="true" />
     <property name="go.vendoring.notification.had.been.shown" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../../../kubepack.dev/lib-helm" />
+    <property name="last_opened_file_path" value="$USER_HOME$" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.detected.package.tslint" value="true" />
     <property name="node.js.selected.package.eslint" value="(autodetect)" />
@@ -140,12 +150,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/gen-installer/main.go</url>
-          <line>79</line>
+          <line>84</line>
           <option name="timeStamp" value="3" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/vendor/kubepack.dev/kubepack/pkg/lib/executors.go</url>
-          <line>396</line>
+          <line>352</line>
           <option name="timeStamp" value="10" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">

@@ -40,9 +40,15 @@ func main() {
 		panic(err)
 	}
 
-	GenerateYAMLScript(bs, order)
-
-	GenerateHelm3Script(bs, order)
+	result, err := GenerateScripts(bs, order)
+	if err != nil {
+		panic(err)
+	}
+	data, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		klog.Fatal(err)
+	}
+	fmt.Println(string(data))
 }
 
 type UserValues struct {
@@ -114,28 +120,21 @@ func newOrder(url, name, version string) (*v1alpha1.Order, error) {
 	}, nil
 }
 
-func GenerateYAMLScript(bs *lib.BlobStore, order *v1alpha1.Order) {
-	scripts, err := lib.GenerateYAMLScript(bs, lib.DefaultRegistry, *order, lib.DisableApplicationCRD)
+func GenerateScripts(bs *lib.BlobStore, order *v1alpha1.Order) (map[string]string, error) {
+	scriptsYAML, err := lib.GenerateYAMLScript(bs, lib.DefaultRegistry, *order, lib.DisableApplicationCRD, lib.OsIndependentScript)
 	if err != nil {
-		klog.Fatal(err)
+		return nil, err
 	}
-	data, err := json.MarshalIndent(scripts, "", "  ")
-	if err != nil {
-		klog.Fatal(err)
-	}
-	fmt.Println(string(data))
-}
 
-func GenerateHelm3Script(bs *lib.BlobStore, order *v1alpha1.Order) {
-	scripts, err := lib.GenerateHelm3Script(bs, lib.DefaultRegistry, *order, lib.DisableApplicationCRD)
+	scriptsHelm3, err := lib.GenerateHelm3Script(bs, lib.DefaultRegistry, *order, lib.DisableApplicationCRD, lib.OsIndependentScript)
 	if err != nil {
-		klog.Fatal(err)
+		return nil, err
 	}
-	data, err := json.MarshalIndent(scripts, "", "  ")
-	if err != nil {
-		klog.Fatal(err)
-	}
-	fmt.Println(string(data))
+
+	return map[string]string{
+		"yaml":  scriptsYAML[0].Script,
+		"helm3": scriptsHelm3[0].Script,
+	}, nil
 }
 
 func NewTestBlobStore() (*lib.BlobStore, error) {
