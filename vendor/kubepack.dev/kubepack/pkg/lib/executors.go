@@ -19,7 +19,6 @@ package lib
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -45,6 +44,7 @@ import (
 	_ "gocloud.dev/blob/fileblob"
 	_ "gocloud.dev/blob/gcsblob"
 	_ "gocloud.dev/blob/s3blob"
+	"gomodules.xyz/encoding/json"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -395,7 +395,7 @@ func (x *Helm3CommandPrinter) Do() error {
 			return err
 		}
 		for _, v := range setValues {
-			_, err = fmt.Fprintf(&buf, `%s--set %s \\\n`, indent, v)
+			_, err = fmt.Fprintf(&buf, "%s--set %s \\\n", indent, v)
 			if err != nil {
 				return err
 			}

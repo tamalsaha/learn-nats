@@ -1267,6 +1267,7 @@ gomodules.xyz/blobfs v0.1.8/go.mod h1:qnkPrdU712+OIx7dFmmKTk84ak57aEWiVxpYsIPX/Y
 gomodules.xyz/cert v1.4.1 h1:e9MVAbPHZIGpvtDRuLGe1Ee7PVi9+OgjAUR9/2P4s1E=
 gomodules.xyz/cert v1.4.1/go.mod h1:qzqrMpjMmCS91v8CHwlodVtvrQQZBYtUbuq8X4TFnOo=
 gomodules.xyz/clock v0.0.0-20200817085942-06523dba733f/go.mod h1:K3m7N+nBOlf91/tpv8REUGwsAgaKFwElQCuiLhm12AQ=
+gomodules.xyz/encoding v0.0.2 h1:tK8zLuf6fvycbc1nlGGpQkr5HPr+sVI/VdDossnKKsw=
 gomodules.xyz/encoding v0.0.2/go.mod h1:ZD+5Llh/9P/xTqoiurjs2w3XfAV2jNtsh04FbucIpLw=
 gomodules.xyz/flags v0.1.0/go.mod h1:H9lmar5MMXuxHBrSgrGZt4q2gkD+8GCm/3Fs2FCE2zA=
 gomodules.xyz/flags v0.1.2/go.mod h1:CIzWYc2zYDs5lQyGJsjhqKgIj+LriNLpiYuX8Pk34gc=
@@ -1463,8 +1464,8 @@ kmodules.xyz/resource-metadata v0.6.7/go.mod h1:BGy9IyQG13z6ArdexZ7gguVrNspLxa1f
 kmodules.xyz/resource-metrics v0.0.5 h1:an1eaxw8mWX5RfujUMTTkJPGiMlQQUDzT6aveSGNAq8=
 kmodules.xyz/resource-metrics v0.0.5/go.mod h1:6Dv63HDgp83DhA+lZNB7GIQR6PLjNrYW6ghQKioQzII=
 kmodules.xyz/webhook-runtime v0.0.0-20210928141616-7f73c2ab318a/go.mod h1:MFZFmJk9IXNHwq8JlF/mukwBDbopFQj4swaB2MWHc/U=
-kubepack.dev/kubepack v0.3.5-0.20211108022854-385527cabc56 h1:L4M/+4Zz14fgfmFMqOdgnrCMbH5hG72Qw1/g92DP9Yw=
-kubepack.dev/kubepack v0.3.5-0.20211108022854-385527cabc56/go.mod h1:fTeHUXySl7iGtb6HiwbSnOj90bDZA1Cc9kNNHDH+jhM=
+kubepack.dev/kubepack v0.3.5-0.20211108024223-786cc0c9e9e7 h1:YA2IQHCuvneZ1u8TeyNMy3fJaZKCRuUW299U7fO1vpE=
+kubepack.dev/kubepack v0.3.5-0.20211108024223-786cc0c9e9e7/go.mod h1:J7xKt/LoplwObZsrnZOPlAthp377s9L9+1txwdwEMa0=
 kubepack.dev/lib-helm v0.2.4-0.20210702135227-03dd8e7b6b0f h1:6g9FdrBzPamWXGX4oo/Z+li6Yfswy6upILu+2RKDR6o=
 kubepack.dev/lib-helm v0.2.4-0.20210702135227-03dd8e7b6b0f/go.mod h1:DplLtfJRRq0Wl3EJqSocdNidVr3sYneLdm5C7Mqe/Ys=
 modernc.org/cc v1.0.0/go.mod h1:1Sk4//wdnYJiUIxnW8ddKpaOJCF37yAdqYnkxUpaYxw=

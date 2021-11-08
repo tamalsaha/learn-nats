@@ -40,10 +40,8 @@ func main() {
 		panic(err)
 	}
 
-	// order.UID = types.UID(ulids.MustNew().String()) // using ulids instead of UUID
-	GenerateYAMLScript(bs, order)
+	// GenerateYAMLScript(bs, order)
 
-	// order.UID = types.UID(ulids.MustNew().String()) // using ulids instead of UUID
 	GenerateHelm3Script(bs, order)
 }
 
