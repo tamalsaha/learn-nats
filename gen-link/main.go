@@ -44,6 +44,14 @@ type LinkData struct {
 	Kubeconfig []byte
 }
 
+type UserValues struct {
+	User struct {
+		Name    string `json:"name"`
+		Email   string `json:"email"`
+		Token   string `json:"token"`
+	} `json:"user"`
+}
+
 type VerifyLink struct {
 	LinkID    string
 	ClusterID string

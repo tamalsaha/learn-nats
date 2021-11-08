@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"gomodules.xyz/jsonpatch/v2"
 	"gomodules.xyz/ulids"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"time"
 
@@ -32,7 +34,10 @@ func main() {
 		klog.Fatal(err)
 	}
 
-	order := newOrder(url, name, version)
+	order, err := newOrder(url, name, version)
+	if err != nil {
+		panic(err)
+	}
 
 	// order.UID = types.UID(ulids.MustNew().String()) // using ulids instead of UUID
 	GenerateYAMLScript(bs, order)
@@ -41,8 +46,43 @@ func main() {
 	GenerateHelm3Script(bs, order)
 }
 
-func newOrder(url, name, version string) v1alpha1.Order {
-	return v1alpha1.Order{
+type UserValues struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Token string `json:"token"`
+}
+
+type ChartValues struct {
+	User UserValues `json:"user"`
+}
+
+func generatePatch() ([]byte, error) {
+	cv := ChartValues{
+		User: UserValues{
+			Name:  "Tamal Saha",
+			Email: "tamal@appscode.com",
+			Token: "****-****-***",
+		},
+	}
+
+	data, err := json.Marshal(cv)
+	if err != nil {
+		return nil, err
+	}
+	ops, err := jsonpatch.CreatePatch([]byte("{}"), data)
+	if err != nil {
+		return nil, err
+	}
+	return json.MarshalIndent(ops, "", "  ")
+}
+
+func newOrder(url, name, version string) (*v1alpha1.Order, error) {
+	patch, err := generatePatch()
+	if err != nil {
+		return nil, err
+	}
+
+	return &v1alpha1.Order{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: v1alpha1.SchemeGroupVersion.String(),
 			Kind:       v1alpha1.ResourceKindOrder,
@@ -64,7 +104,7 @@ func newOrder(url, name, version string) v1alpha1.Order {
 						Namespace:   "kubeops", // change to kubeops or bytebuilders?
 						Bundle:      nil,
 						ValuesFile:  "values.yaml",
-						ValuesPatch: nil,
+						ValuesPatch: &runtime.RawExtension{Raw: patch},
 						Resources:   nil,
 						WaitFors:    nil,
 					},
@@ -72,11 +112,11 @@ func newOrder(url, name, version string) v1alpha1.Order {
 			},
 			KubeVersion: "",
 		},
-	}
+	}, nil
 }
 
-func GenerateYAMLScript(bs *lib.BlobStore, order v1alpha1.Order) {
-	scripts, err := lib.GenerateYAMLScript(bs, lib.DefaultRegistry, order, lib.DisableApplicationCRD)
+func GenerateYAMLScript(bs *lib.BlobStore, order *v1alpha1.Order) {
+	scripts, err := lib.GenerateYAMLScript(bs, lib.DefaultRegistry, *order, lib.DisableApplicationCRD)
 	if err != nil {
 		klog.Fatal(err)
 	}
@@ -87,8 +127,8 @@ func GenerateYAMLScript(bs *lib.BlobStore, order v1alpha1.Order) {
 	fmt.Println(string(data))
 }
 
-func GenerateHelm3Script(bs *lib.BlobStore, order v1alpha1.Order) {
-	scripts, err := lib.GenerateHelm3Script(bs, lib.DefaultRegistry, order, lib.DisableApplicationCRD)
+func GenerateHelm3Script(bs *lib.BlobStore, order *v1alpha1.Order) {
+	scripts, err := lib.GenerateHelm3Script(bs, lib.DefaultRegistry, *order, lib.DisableApplicationCRD)
 	if err != nil {
 		klog.Fatal(err)
 	}
