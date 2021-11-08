@@ -53,7 +53,6 @@ import (
 	core "k8s.io/api/core/v1"
 	crdv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	crd_cs "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	kerr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -63,7 +62,6 @@ import (
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes"
 	authv1client "k8s.io/client-go/kubernetes/typed/authorization/v1"
 	"k8s.io/client-go/rest"
 	"kmodules.xyz/client-go/apiextensions"
@@ -76,37 +74,6 @@ import (
 )
 
 type DoFn func() error
-
-type NamespacePrinter struct {
-	Namespace string
-	W         io.Writer
-}
-
-func (x *NamespacePrinter) Do() error {
-	_, err := x.W.Write([]byte("## create namespace if missing\n"))
-	if err != nil {
-		return err
-	}
-	_, err = x.W.Write([]byte(fmt.Sprintf("kubectl create namespace %s || true\n", x.Namespace)))
-	return err
-}
-
-type NamespaceCreator struct {
-	Namespace string
-	Client    kubernetes.Interface
-}
-
-func (x *NamespaceCreator) Do() error {
-	_, err := x.Client.CoreV1().Namespaces().Create(context.TODO(), &core.Namespace{
-		ObjectMeta: v1.ObjectMeta{
-			Name: x.Namespace,
-		},
-	}, metav1.CreateOptions{})
-	if err != nil && !kerr.IsAlreadyExists(err) {
-		return err
-	}
-	return nil
-}
 
 type WaitForPrinter struct {
 	Name      string
@@ -382,7 +349,7 @@ func (x *Helm3CommandPrinter) Do() error {
 		return err
 	}
 	if x.Namespace != "" {
-		_, err = fmt.Fprintf(&buf, "%s--namespace %s \\\n", indent, x.Namespace)
+		_, err = fmt.Fprintf(&buf, "%s--namespace %s --create-namespace \\\n", indent, x.Namespace)
 		if err != nil {
 			return err
 		}
@@ -598,6 +565,16 @@ func (x *YAMLPrinter) Do() error {
 	defer dirCRD.Close()
 
 	var buf bytes.Buffer
+
+	if !apis.BuiltinNamespaces.Has(x.Namespace) {
+		buf.WriteString(fmt.Sprintf(`apiVersion: v1
+kind: Namespace
+metadata:
+  name: %s
+
+---
+`, x.Namespace))
+	}
 
 	chrt, err := x.Registry.GetChart(x.ChartRef.URL, x.ChartRef.Name, x.Version)
 	if err != nil {
