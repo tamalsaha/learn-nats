@@ -21,8 +21,11 @@ require (
 	k8s.io/apiserver v0.21.1
 	k8s.io/client-go v0.21.1
 	k8s.io/klog/v2 v2.8.0
-	kmodules.xyz/client-go v0.0.0-20211107190155-5bb4090d2728
+	kmodules.xyz/client-go v0.0.0-20211110065417-091bd089a92d
+	kubedb.dev/apimachinery v0.23.0
+	kubedb.dev/schema-manager v0.0.0-20211110061305-8b9c033d338c
 	kubepack.dev/kubepack v0.3.8
+	kubevault.dev/apimachinery v0.5.1
 	sigs.k8s.io/controller-runtime v0.9.0
 )
 
@@ -148,7 +151,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.11.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
-	github.com/prometheus/common v0.18.0 // indirect
+	github.com/prometheus/common v0.26.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
 	github.com/rubenv/sql-migrate v0.0.0-20200616145509-8d140a17f351 // indirect
 	github.com/russross/blackfriday v1.5.3-0.20190124082335-a477dd164691 // indirect
@@ -176,17 +179,20 @@ require (
 	gocloud.dev v0.22.0 // indirect
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e // indirect
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
-	golang.org/x/mod v0.3.1-0.20200828183125-ce943fd02449 // indirect
+	golang.org/x/mod v0.4.2 // indirect
 	golang.org/x/net v0.0.0-20210520170846-37e1c6afe023 // indirect
-	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a // indirect
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20210817190340-bfb29a6856f2 // indirect
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d // indirect
 	golang.org/x/text v0.3.6 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
-	golang.org/x/tools v0.1.0 // indirect
+	golang.org/x/tools v0.1.1-0.20210427153610-6397a11608ad // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	gomodules.xyz/encoding v0.0.2 // indirect
 	gomodules.xyz/jsonpath v0.0.1 // indirect
+	gomodules.xyz/mergo v0.3.13-0.20210702100041-9d62ff8ece4d // indirect
 	gomodules.xyz/pointer v0.1.0 // indirect
+	gomodules.xyz/sets v0.2.0 // indirect
 	gomodules.xyz/sync v0.1.0 // indirect
 	gomodules.xyz/x v0.0.8 // indirect
 	google.golang.org/api v0.36.0 // indirect
@@ -209,7 +215,9 @@ require (
 	kmodules.xyz/apiversion v0.2.0 // indirect
 	kmodules.xyz/apply v0.0.0-20210503080849-eb226c295465 // indirect
 	kmodules.xyz/custom-resources v0.0.0-20211007080833-72bd9e8cae6e // indirect
-	kmodules.xyz/offshoot-api v0.0.0-20210829122105-6f4d481b0c61 // indirect
+	kmodules.xyz/monitoring-agent-api v0.0.0-20210928135619-38ca075a2dbd // indirect
+	kmodules.xyz/objectstore-api v0.0.0-20210928135706-fdf68f88ea6e // indirect
+	kmodules.xyz/offshoot-api v0.0.0-20211103060642-3e217667cf41 // indirect
 	kmodules.xyz/resource-metadata v0.6.7 // indirect
 	kmodules.xyz/resource-metrics v0.0.5 // indirect
 	kubepack.dev/lib-helm v0.3.1 // indirect

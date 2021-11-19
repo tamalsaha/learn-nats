@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
+
 	//"time"
 
 	// 	"github.com/nats-io/nats.go"
@@ -16,6 +18,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	kubedbscheme "kubedb.dev/apimachinery/client/clientset/versioned/scheme"
+	kubevaultscheme "kubevault.dev/apimachinery/client/clientset/versioned/scheme"
+	schemav1alpha1 "kubedb.dev/schema-manager/apis/schema/v1alpha1"
 )
 
 var (
@@ -31,6 +36,9 @@ func main() {
 
 func run() error {
 	_ = clientgoscheme.AddToScheme(scheme)
+	_ = kubedbscheme.AddToScheme(scheme)
+	_ = kubevaultscheme.AddToScheme(scheme)
+	_ = schemav1alpha1.AddToScheme(scheme)
 
 	// 	nc, err := nats.Connect(shared.NATS_URL)
 	// 	if err != nil {
@@ -75,5 +83,15 @@ func run() error {
 	for _, n := range nodes.Items {
 		fmt.Println(n.Name)
 	}
+
+	var mysqls v1alpha2.MySQLList
+	err = c.List(context.TODO(), &mysqls)
+	if err != nil {
+		panic(err)
+	}
+	for _, n := range mysqls.Items {
+		fmt.Println(n.Name)
+	}
+
 	return nil
 }
