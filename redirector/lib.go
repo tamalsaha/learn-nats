@@ -23,9 +23,7 @@ type REST struct {
 	proxyTransport http.RoundTripper
 }
 
-var (
-	_ rest.Redirector = &REST{}
-)
+var _ rest.Redirector = &REST{}
 
 // ResourceLocation returns a URL to which one can send traffic for the specified service.
 func (r *REST) ResourceLocation(ctx context.Context, id string) (*url.URL, http.RoundTripper, error) {

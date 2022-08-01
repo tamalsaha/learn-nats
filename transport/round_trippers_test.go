@@ -19,12 +19,13 @@ package transport
 import (
 	"bytes"
 	"fmt"
-	"k8s.io/client-go/transport"
 	"net/http"
 	"net/url"
 	"reflect"
 	"strings"
 	"testing"
+
+	"k8s.io/client-go/transport"
 
 	"k8s.io/klog/v2"
 )

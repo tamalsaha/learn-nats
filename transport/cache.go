@@ -18,12 +18,13 @@ package transport
 
 import (
 	"fmt"
-	"github.com/nats-io/nats.go"
-	"k8s.io/client-go/transport"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/nats-io/nats.go"
+	"k8s.io/client-go/transport"
 )
 
 // TlsTransportCache caches TLS http.RoundTrippers different configurations. The

@@ -3,12 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"gomodules.xyz/jsonpatch/v2"
 	"gomodules.xyz/ulids"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"time"
 
 	"gomodules.xyz/blobfs/testing"
 	"k8s.io/klog/v2"
@@ -149,7 +150,7 @@ func NewTestBlobStore() (*lib.BlobStore, error) {
 	}
 	return &lib.BlobStore{
 		Interface: fs,
-		Host:   ConnectorLinkHost,
-		Bucket: ConnectorLinkManifestBucket,
+		Host:      ConnectorLinkHost,
+		Bucket:    ConnectorLinkManifestBucket,
 	}, nil
 }

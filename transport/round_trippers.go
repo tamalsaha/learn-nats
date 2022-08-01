@@ -18,10 +18,11 @@ package transport
 
 import (
 	"fmt"
-	"k8s.io/client-go/transport"
 	"net/http"
 	"strings"
 	"time"
+
+	"k8s.io/client-go/transport"
 
 	"golang.org/x/oauth2"
 

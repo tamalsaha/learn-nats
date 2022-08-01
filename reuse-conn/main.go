@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
-	"github.com/hashicorp/go-cleanhttp"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptrace"
+
+	"github.com/hashicorp/go-cleanhttp"
 )
 
 func main() {

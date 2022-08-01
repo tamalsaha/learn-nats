@@ -3,9 +3,10 @@ package transport
 import (
 	"crypto/tls"
 	"fmt"
+	"time"
+
 	"gomodules.xyz/cert"
 	"k8s.io/client-go/transport"
-	"time"
 )
 
 type R struct {

@@ -28,7 +28,7 @@ func main__() {
 	if err != nil {
 		panic(err)
 	}
-	err = ioutil.WriteFile("/tmp/kind.crt", cert_bytes, 0644)
+	err = ioutil.WriteFile("/tmp/kind.crt", cert_bytes, 0o644)
 	if err != nil {
 		panic(err)
 	}
@@ -37,7 +37,7 @@ func main__() {
 	if err != nil {
 		panic(err)
 	}
-	err = ioutil.WriteFile("/tmp/kind.key", key_bytes, 0644)
+	err = ioutil.WriteFile("/tmp/kind.key", key_bytes, 0o644)
 	if err != nil {
 		panic(err)
 	}
@@ -60,7 +60,7 @@ func main__() {
 	if err != nil {
 		panic(err)
 	}
-	err = ioutil.WriteFile("/tmp/k2.crt", buf.Bytes(), 0644)
+	err = ioutil.WriteFile("/tmp/k2.crt", buf.Bytes(), 0o644)
 	if err != nil {
 		panic(err)
 	}
@@ -80,7 +80,7 @@ func main__() {
 	if err != nil {
 		panic(err)
 	}
-	err = ioutil.WriteFile("/tmp/k2.key", buf.Bytes(), 0644)
+	err = ioutil.WriteFile("/tmp/k2.key", buf.Bytes(), 0o644)
 	if err != nil {
 		panic(err)
 	}
@@ -93,7 +93,7 @@ func main__() {
 	if err != nil {
 		panic(err)
 	}
-	err = ioutil.WriteFile("/tmp/k2.json", data, 0644)
+	err = ioutil.WriteFile("/tmp/k2.json", data, 0o644)
 	if err != nil {
 		panic(err)
 	}
@@ -102,7 +102,7 @@ func main__() {
 	if err != nil {
 		panic(err)
 	}
-	err = ioutil.WriteFile("/tmp/kind_cert.json", data, 0644)
+	err = ioutil.WriteFile("/tmp/kind_cert.json", data, 0o644)
 	if err != nil {
 		panic(err)
 	}

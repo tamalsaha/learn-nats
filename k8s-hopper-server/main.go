@@ -3,15 +3,16 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"net/http"
+	"sync"
+	"time"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/nats-io/nats.go"
 	"github.com/unrolled/render"
 	"go.wandrs.dev/binding"
 	"k8s.io/klog/v2"
-	"net/http"
-	"sync"
-	"time"
 )
 
 func main() {

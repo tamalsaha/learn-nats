@@ -2,12 +2,13 @@ package transport
 
 import (
 	"fmt"
+	"net/http"
+	"net/url"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/flowcontrol"
-	"net/http"
-	"net/url"
 )
 
 // RESTClientFor returns a RESTClient that satisfies the requested attributes on a client Config

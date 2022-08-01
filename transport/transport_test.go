@@ -21,9 +21,10 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"k8s.io/client-go/transport"
 	"net/http"
 	"testing"
+
+	"k8s.io/client-go/transport"
 )
 
 const (

@@ -19,10 +19,11 @@ package transport
 import (
 	"context"
 	"crypto/tls"
-	"k8s.io/client-go/transport"
 	"net"
 	"net/http"
 	"testing"
+
+	"k8s.io/client-go/transport"
 )
 
 func TestTLSConfigKey(t *testing.T) {

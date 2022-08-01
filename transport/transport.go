@@ -22,12 +22,14 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"github.com/nats-io/nats.go"
 	"io/ioutil"
-	"k8s.io/client-go/transport"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/nats-io/nats.go"
+
+	"k8s.io/client-go/transport"
 
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/klog/v2"

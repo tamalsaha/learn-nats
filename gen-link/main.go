@@ -5,17 +5,19 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/tamalsaha/nats-hop-demo/shared"
 	"github.com/tamalsaha/nats-hop-demo/transport"
-	"io/ioutil"
+
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"kmodules.xyz/client-go/tools/clusterid"
-	"path/filepath"
-	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
