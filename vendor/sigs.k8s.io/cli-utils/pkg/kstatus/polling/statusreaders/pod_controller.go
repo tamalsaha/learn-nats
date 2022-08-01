@@ -13,11 +13,11 @@ import (
 	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/engine"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/event"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
+	"sigs.k8s.io/cli-utils/pkg/object"
 )
 
-func newPodControllerStatusReader(reader engine.ClusterReader, mapper meta.RESTMapper, podStatusReader resourceTypeStatusReader) *podControllerStatusReader {
+func newPodControllerStatusReader(mapper meta.RESTMapper, podStatusReader resourceTypeStatusReader) *podControllerStatusReader {
 	return &podControllerStatusReader{
-		reader:          reader,
 		mapper:          mapper,
 		podStatusReader: podStatusReader,
 		groupKind: schema.GroupKind{
@@ -33,7 +33,6 @@ func newPodControllerStatusReader(reader engine.ClusterReader, mapper meta.RESTM
 // for resource types that act as controllers for pods. This is quite common, so
 // the logic is here instead of duplicated in each resource specific StatusReader.
 type podControllerStatusReader struct {
-	reader          engine.ClusterReader
 	mapper          meta.RESTMapper
 	podStatusReader resourceTypeStatusReader
 	groupKind       schema.GroupKind
@@ -43,29 +42,18 @@ type podControllerStatusReader struct {
 	statusForGenResourcesFunc statusForGenResourcesFunc
 }
 
-func (p *podControllerStatusReader) readStatus(ctx context.Context, object *unstructured.Unstructured) *event.ResourceStatus {
-	identifier := toIdentifier(object)
+func (p *podControllerStatusReader) readStatus(ctx context.Context, reader engine.ClusterReader, obj *unstructured.Unstructured) (*event.ResourceStatus, error) {
+	identifier := object.UnstructuredToObjMetadata(obj)
 
-	podResourceStatuses, err := p.statusForGenResourcesFunc(ctx, p.mapper, p.reader, p.podStatusReader, object,
+	podResourceStatuses, err := p.statusForGenResourcesFunc(ctx, p.mapper, reader, p.podStatusReader, obj,
 		p.groupKind, "spec", "selector")
 	if err != nil {
-		return &event.ResourceStatus{
-			Identifier: identifier,
-			Status:     status.UnknownStatus,
-			Resource:   object,
-			Error:      err,
-		}
+		return errResourceToResourceStatus(err, obj)
 	}
 
-	res, err := p.statusFunc(object)
+	res, err := p.statusFunc(obj)
 	if err != nil {
-		return &event.ResourceStatus{
-			Identifier:         identifier,
-			Status:             status.UnknownStatus,
-			Resource:           object,
-			Error:              err,
-			GeneratedResources: podResourceStatuses,
-		}
+		return errResourceToResourceStatus(err, obj, podResourceStatuses...)
 	}
 
 	// If the status comes back as pending, we take a look at the pods to make sure
@@ -83,18 +71,18 @@ func (p *podControllerStatusReader) readStatus(ctx context.Context, object *unst
 			return &event.ResourceStatus{
 				Identifier:         identifier,
 				Status:             status.FailedStatus,
-				Resource:           object,
+				Resource:           obj,
 				Message:            fmt.Sprintf("%d pods have failed", len(failedPods)),
 				GeneratedResources: podResourceStatuses,
-			}
+			}, nil
 		}
 	}
 
 	return &event.ResourceStatus{
 		Identifier:         identifier,
 		Status:             res.Status,
-		Resource:           object,
+		Resource:           obj,
 		Message:            res.Message,
 		GeneratedResources: podResourceStatuses,
-	}
+	}, nil
 }

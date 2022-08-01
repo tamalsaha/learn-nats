@@ -84,12 +84,16 @@ const (
 
 	wsNoMaskingHeader       = "Nats-No-Masking"
 	wsNoMaskingValue        = "true"
+	wsXForwardedForHeader   = "X-Forwarded-For"
 	wsNoMaskingFullResponse = wsNoMaskingHeader + ": " + wsNoMaskingValue + CR_LF
 	wsPMCExtension          = "permessage-deflate" // per-message compression
 	wsPMCSrvNoCtx           = "server_no_context_takeover"
 	wsPMCCliNoCtx           = "client_no_context_takeover"
 	wsPMCReqHeaderValue     = wsPMCExtension + "; " + wsPMCSrvNoCtx + "; " + wsPMCCliNoCtx
 	wsPMCFullResponse       = "Sec-WebSocket-Extensions: " + wsPMCExtension + "; " + wsPMCSrvNoCtx + "; " + wsPMCCliNoCtx + _CRLF_
+	wsSecProto              = "Sec-Websocket-Protocol"
+	wsMQTTSecProtoVal       = "mqtt"
+	wsMQTTSecProto          = wsSecProto + ": " + wsMQTTSecProtoVal + CR_LF
 )
 
 var decompressorPool sync.Pool
@@ -113,6 +117,7 @@ type websocket struct {
 	maskwrite  bool
 	compressor *flate.Writer
 	cookieJwt  string
+	clientIP   string
 }
 
 type srvWebsocket struct {
@@ -684,6 +689,8 @@ func (s *Server) wsUpgrade(w http.ResponseWriter, r *http.Request) (*wsUpgradeRe
 		ep := r.URL.EscapedPath()
 		if strings.HasPrefix(ep, leafNodeWSPath) {
 			kind = LEAF
+		} else if strings.HasPrefix(ep, mqttWSPath) {
+			kind = MQTT
 		}
 	}
 
@@ -692,33 +699,33 @@ func (s *Server) wsUpgrade(w http.ResponseWriter, r *http.Request) (*wsUpgradeRe
 	// From https://tools.ietf.org/html/rfc6455#section-4.2.1
 	// Point 1.
 	if r.Method != "GET" {
-		return nil, wsReturnHTTPError(w, http.StatusMethodNotAllowed, "request method must be GET")
+		return nil, wsReturnHTTPError(w, r, http.StatusMethodNotAllowed, "request method must be GET")
 	}
 	// Point 2.
 	if r.Host == _EMPTY_ {
-		return nil, wsReturnHTTPError(w, http.StatusBadRequest, "'Host' missing in request")
+		return nil, wsReturnHTTPError(w, r, http.StatusBadRequest, "'Host' missing in request")
 	}
 	// Point 3.
 	if !wsHeaderContains(r.Header, "Upgrade", "websocket") {
-		return nil, wsReturnHTTPError(w, http.StatusBadRequest, "invalid value for header 'Upgrade'")
+		return nil, wsReturnHTTPError(w, r, http.StatusBadRequest, "invalid value for header 'Upgrade'")
 	}
 	// Point 4.
 	if !wsHeaderContains(r.Header, "Connection", "Upgrade") {
-		return nil, wsReturnHTTPError(w, http.StatusBadRequest, "invalid value for header 'Connection'")
+		return nil, wsReturnHTTPError(w, r, http.StatusBadRequest, "invalid value for header 'Connection'")
 	}
 	// Point 5.
 	key := r.Header.Get("Sec-Websocket-Key")
 	if key == _EMPTY_ {
-		return nil, wsReturnHTTPError(w, http.StatusBadRequest, "key missing")
+		return nil, wsReturnHTTPError(w, r, http.StatusBadRequest, "key missing")
 	}
 	// Point 6.
 	if !wsHeaderContains(r.Header, "Sec-Websocket-Version", "13") {
-		return nil, wsReturnHTTPError(w, http.StatusBadRequest, "invalid version")
+		return nil, wsReturnHTTPError(w, r, http.StatusBadRequest, "invalid version")
 	}
 	// Others are optional
 	// Point 7.
 	if err := s.websocket.checkOrigin(r); err != nil {
-		return nil, wsReturnHTTPError(w, http.StatusForbidden, fmt.Sprintf("origin not allowed: %v", err))
+		return nil, wsReturnHTTPError(w, r, http.StatusForbidden, fmt.Sprintf("origin not allowed: %v", err))
 	}
 	// Point 8.
 	// We don't have protocols, so ignore.
@@ -738,11 +745,11 @@ func (s *Server) wsUpgrade(w http.ResponseWriter, r *http.Request) (*wsUpgradeRe
 		if conn != nil {
 			conn.Close()
 		}
-		return nil, wsReturnHTTPError(w, http.StatusInternalServerError, err.Error())
+		return nil, wsReturnHTTPError(w, r, http.StatusInternalServerError, err.Error())
 	}
 	if brw.Reader.Buffered() > 0 {
 		conn.Close()
-		return nil, wsReturnHTTPError(w, http.StatusBadRequest, "client sent data before handshake is complete")
+		return nil, wsReturnHTTPError(w, r, http.StatusBadRequest, "client sent data before handshake is complete")
 	}
 
 	var buf [1024]byte
@@ -758,6 +765,9 @@ func (s *Server) wsUpgrade(w http.ResponseWriter, r *http.Request) (*wsUpgradeRe
 	if noMasking {
 		p = append(p, wsNoMaskingFullResponse...)
 	}
+	if kind == MQTT {
+		p = append(p, wsMQTTSecProto...)
+	}
 	p = append(p, _CRLF_...)
 
 	if _, err = conn.Write(p); err != nil {
@@ -771,7 +781,16 @@ func (s *Server) wsUpgrade(w http.ResponseWriter, r *http.Request) (*wsUpgradeRe
 	// Server always expect "clients" to send masked payload, unless the option
 	// "no-masking" has been enabled.
 	ws := &websocket{compress: compress, maskread: !noMasking}
-	if kind == CLIENT {
+
+	// Check for X-Forwarded-For header
+	if cips, ok := r.Header[wsXForwardedForHeader]; ok {
+		cip := cips[0]
+		if net.ParseIP(cip) != nil {
+			ws.clientIP = cip
+		}
+	}
+
+	if kind == CLIENT || kind == MQTT {
 		// Indicate if this is likely coming from a browser.
 		if ua := r.Header.Get("User-Agent"); ua != _EMPTY_ && strings.HasPrefix(ua, "Mozilla/") {
 			ws.browser = true
@@ -841,8 +860,8 @@ func wsPMCExtensionSupport(header http.Header, checkPMCOnly bool) (bool, bool) {
 
 // Send an HTTP error with the given `status`` to the given http response writer `w`.
 // Return an error created based on the `reason` string.
-func wsReturnHTTPError(w http.ResponseWriter, status int, reason string) error {
-	err := fmt.Errorf("websocket handshake error: %s", reason)
+func wsReturnHTTPError(w http.ResponseWriter, r *http.Request, status int, reason string) error {
+	err := fmt.Errorf("%s - websocket handshake error: %s", r.RemoteAddr, reason)
 	w.Header().Set("Sec-Websocket-Version", "13")
 	http.Error(w, http.StatusText(status), status)
 	return err
@@ -1096,6 +1115,8 @@ func (s *Server) startWebsocketServer() {
 		switch res.kind {
 		case CLIENT:
 			s.createWSClient(res.conn, res.ws)
+		case MQTT:
+			s.createMQTTClient(res.conn, res.ws)
 		case LEAF:
 			if !hasLeaf {
 				s.Errorf("Not configured to accept leaf node connections")
@@ -1112,7 +1133,7 @@ func (s *Server) startWebsocketServer() {
 		Addr:        hp,
 		Handler:     mux,
 		ReadTimeout: o.HandshakeTimeout,
-		ErrorLog:    log.New(&wsCaptureHTTPServerLog{s}, _EMPTY_, 0),
+		ErrorLog:    log.New(&captureHTTPServerLog{s, "websocket: "}, _EMPTY_, 0),
 	}
 	s.websocket.server = hs
 	s.websocket.listener = hl
@@ -1237,24 +1258,6 @@ func (s *Server) createWSClient(conn net.Conn, ws *websocket) *client {
 	c.mu.Unlock()
 
 	return c
-}
-
-type wsCaptureHTTPServerLog struct {
-	s *Server
-}
-
-func (cl *wsCaptureHTTPServerLog) Write(p []byte) (int, error) {
-	var buf [128]byte
-	var b = buf[:0]
-
-	copy(b, []byte("websocket :"))
-	offset := 0
-	if bytes.HasPrefix(p, []byte("http:")) {
-		offset = 6
-	}
-	b = append(b, p[offset:]...)
-	cl.s.Errorf(string(b))
-	return len(p), nil
 }
 
 func (c *client) wsCollapsePtoNB() (net.Buffers, int64) {

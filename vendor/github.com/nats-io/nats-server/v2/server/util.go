@@ -21,6 +21,7 @@ import (
 	"net"
 	"net/url"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -35,6 +36,46 @@ const (
 	asciiZero = 48
 	asciiNine = 57
 )
+
+var semVerRe = regexp.MustCompile(`\Av?([0-9]+)\.?([0-9]+)?\.?([0-9]+)?`)
+
+func versionComponents(version string) (major, minor, patch int, err error) {
+	m := semVerRe.FindStringSubmatch(version)
+	if m == nil {
+		return 0, 0, 0, errors.New("invalid semver")
+	}
+	major, err = strconv.Atoi(m[1])
+	if err != nil {
+		return -1, -1, -1, err
+	}
+	minor, err = strconv.Atoi(m[2])
+	if err != nil {
+		return -1, -1, -1, err
+	}
+	patch, err = strconv.Atoi(m[3])
+	if err != nil {
+		return -1, -1, -1, err
+	}
+	return major, minor, patch, err
+}
+
+func versionAtLeastCheckError(version string, emajor, eminor, epatch int) (bool, error) {
+	major, minor, patch, err := versionComponents(version)
+	if err != nil {
+		return false, err
+	}
+	if major > emajor ||
+		(major == emajor && minor > eminor) ||
+		(major == emajor && minor == eminor && patch >= epatch) {
+		return true, nil
+	}
+	return false, err
+}
+
+func versionAtLeast(version string, emajor, eminor, epatch int) bool {
+	res, _ := versionAtLeastCheckError(version, emajor, eminor, epatch)
+	return res
+}
 
 // parseSize expects decimal positive numbers. We
 // return -1 to signal error.
@@ -270,4 +311,26 @@ func getURLsAsString(urls []*url.URL) []string {
 		a = append(a, u.Host)
 	}
 	return a
+}
+
+// copyBytes make a new slice of the same size than `src` and copy its content.
+// If `src` is nil or its length is 0, then this returns `nil`
+func copyBytes(src []byte) []byte {
+	if len(src) == 0 {
+		return nil
+	}
+	dst := make([]byte, len(src))
+	copy(dst, src)
+	return dst
+}
+
+// copyStrings make a new slice of the same size than `src` and copy its content.
+// If `src` is nil, then this returns `nil`
+func copyStrings(src []string) []string {
+	if src == nil {
+		return nil
+	}
+	dst := make([]string, len(src))
+	copy(dst, src)
+	return dst
 }
