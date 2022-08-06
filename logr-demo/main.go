@@ -1,12 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/nats-io/nats.go"
 	"log"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -15,29 +13,13 @@ import (
 
 var LogNatsError = true
 
-var pool = sync.Pool{
-	New: func() interface{} {
-		return new(bytes.Buffer)
-	},
-}
-
 func NewAsync(nc *nats.Conn, subj string) logr.Logger {
 	return NewAsyncWithOptions(nc, subj, funcr.Options{})
 }
 
 func NewAsyncWithOptions(nc *nats.Conn, subj string, opts funcr.Options) logr.Logger {
-	return funcr.New(func(prefix, args string) {
-		data := []byte(args)
-		if prefix != "" {
-			buf := pool.Get().(*bytes.Buffer)
-			buf.Reset()
-			buf.WriteString(prefix)
-			buf.WriteString(": ")
-			buf.WriteString(args)
-			data = buf.Bytes()
-			pool.Put(buf)
-		}
-		if err := nc.Publish(subj, data); err != nil && LogNatsError {
+	return funcr.New(func(_, args string) {
+		if err := nc.Publish(subj, []byte(args)); err != nil && LogNatsError {
 			_, _ = fmt.Fprintln(os.Stderr, err)
 		}
 	}, opts)
@@ -48,18 +30,8 @@ func NewSync(nc *nats.Conn, subj string, timeout time.Duration) logr.Logger {
 }
 
 func NewSyncWithOptions(nc *nats.Conn, subj string, timeout time.Duration, opts funcr.Options) logr.Logger {
-	return funcr.New(func(prefix, args string) {
-		data := []byte(args)
-		if prefix != "" {
-			buf := pool.Get().(*bytes.Buffer)
-			buf.Reset()
-			buf.WriteString(prefix)
-			buf.WriteString(": ")
-			buf.WriteString(args)
-			data = buf.Bytes()
-			pool.Put(buf)
-		}
-		if _, err := nc.Request(subj, data, timeout); err != nil && LogNatsError {
+	return funcr.New(func(_, args string) {
+		if _, err := nc.Request(subj, []byte(args), timeout); err != nil && LogNatsError {
 			_, _ = fmt.Fprintln(os.Stderr, err)
 		}
 	}, opts)
