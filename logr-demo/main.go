@@ -65,17 +65,6 @@ func NewSyncWithOptions(nc *nats.Conn, subj string, timeout time.Duration, opts 
 	}, opts)
 }
 
-// NewStdoutLogger returns a logr.Logger that prints to stdout.
-func NewStdoutLogger() logr.Logger {
-	return funcr.New(func(prefix, args string) {
-		if prefix != "" {
-			_ = fmt.Sprintf("%s: %s\n", prefix, args)
-		} else {
-			fmt.Println(args)
-		}
-	}, funcr.Options{})
-}
-
 /*
 nats-server -p 4222 -m 8222 -js --user myname --pass password
 
