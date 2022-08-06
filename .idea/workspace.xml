@@ -5,11 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c0dc91f8-e088-434a-9a49-b39f6dc7b1a0" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/logr-demo/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/logr-demo/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/logr-demo/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vendor/modules.txt" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/modules.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -60,7 +57,7 @@
     "nodejs_package_manager_path": "npm"
   }
 }]]></component>
-  <component name="RunManager" selected="Go Build.go build github.com/tamalsaha/nats-hop-demo/url-gen">
+  <component name="RunManager" selected="Go Build.go build github.com/tamalsaha/nats-hop-demo/logr-demo">
     <configuration name="go build github.com/tamalsaha/nats-hop-demo" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
       <module name="nats-hop-demo" />
       <working_directory value="$PROJECT_DIR$" />
@@ -88,13 +85,13 @@
       <filePath value="$PROJECT_DIR$/gen-installer/main.go" />
       <method v="2" />
     </configuration>
-    <configuration name="go build github.com/tamalsaha/nats-hop-demo/k8s-hopper-agent" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+    <configuration name="go build github.com/tamalsaha/nats-hop-demo/logr-demo" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
       <module name="nats-hop-demo" />
       <working_directory value="$PROJECT_DIR$" />
       <kind value="PACKAGE" />
-      <package value="github.com/tamalsaha/nats-hop-demo/k8s-hopper-agent" />
+      <package value="github.com/tamalsaha/nats-hop-demo/logr-demo" />
       <directory value="$PROJECT_DIR$" />
-      <filePath value="$PROJECT_DIR$/k8s-hopper-agent/main.go" />
+      <filePath value="$PROJECT_DIR$/logr-demo/main.go" />
       <method v="2" />
     </configuration>
     <configuration name="go build github.com/tamalsaha/nats-hop-demo/url-gen" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
@@ -113,11 +110,11 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Go Build.go build github.com/tamalsaha/nats-hop-demo/logr-demo" />
         <item itemvalue="Go Build.go build github.com/tamalsaha/nats-hop-demo/url-gen" />
         <item itemvalue="Go Build.go build github.com/tamalsaha/nats-hop-demo/gen-installer" />
         <item itemvalue="Go Build.go build github.com/tamalsaha/nats-hop-demo/crt" />
         <item itemvalue="Go Build.go build github.com/tamalsaha/nats-hop-demo" />
-        <item itemvalue="Go Build.go build github.com/tamalsaha/nats-hop-demo/k8s-hopper-agent" />
       </list>
     </recent_temporary>
   </component>
