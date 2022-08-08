@@ -44,7 +44,7 @@ nats-server -p 4222 -m 8222 -js --user myname --pass password
 
 nats sub msg.test --user myname --password password --connection-name=demo
 */
-func main() {
+func main__() {
 	// Set a user and plain text password
 	nc, err := nats.Connect("127.0.0.1", nats.UserInfo("myname", "password"))
 	if err != nil {
@@ -59,4 +59,19 @@ func main() {
 	l.Error(fmt.Errorf("an error"), "error log", "stringVal", "value", "intVal", 12345)
 
 	select {}
+}
+
+// NewStdoutLogger returns a logr.Logger that prints to stdout.
+func NewStdoutLogger() logr.Logger {
+	return funcr.NewJSON(func(args string) {
+		msg := fmt.Sprintf(`{"seqId":%d,%s`, time.Now().UnixMilli(), args[2:])
+		fmt.Println(msg)
+	}, funcr.Options{})
+}
+
+func main() {
+	l := NewStdoutLogger()
+	l.Info("default info log", "stringVal", "value", "intVal", 12345)
+	l.V(0).Info("V(0) info log", "stringVal", "value", "intVal", 12345)
+	l.Error(fmt.Errorf("an error"), "error log", "stringVal", "value", "intVal", 12345)
 }

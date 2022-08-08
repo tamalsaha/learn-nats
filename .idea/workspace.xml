@@ -5,6 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c0dc91f8-e088-434a-9a49-b39f6dc7b1a0" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/invoke-func/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/logr-demo/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/logr-demo/main.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -39,33 +41,24 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "DefaultGoTemplateProperty": "Go File",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.go.format.on.save.advertiser.fired": "true",
-    "RunOnceActivity.go.formatter.settings.were.checked": "true",
-    "RunOnceActivity.go.migrated.go.modules.settings": "true",
-    "RunOnceActivity.go.modules.go.list.on.any.changes.was.set": "true",
-    "RunOnceActivity.go.vendoring.notification.had.been.shown": "true",
-    "RunOnceActivity.go.watchers.conflict.with.on.save.actions.check.performed": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "go.import.settings.migrated": "true",
-    "last_opened_file_path": "/Users/tamal",
-    "nodejs_package_manager_path": "npm"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;DefaultGoTemplateProperty&quot;: &quot;Go File&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.format.on.save.advertiser.fired&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.migrated.go.modules.settings&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.modules.go.list.on.any.changes.was.set&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.vendoring.notification.had.been.shown&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.watchers.conflict.with.on.save.actions.check.performed&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/tamal&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;
   }
-}]]></component>
-  <component name="RunManager" selected="Go Build.go build github.com/tamalsaha/nats-hop-demo/logr-demo">
-    <configuration name="go build github.com/tamalsaha/nats-hop-demo" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
-      <module name="nats-hop-demo" />
-      <working_directory value="$PROJECT_DIR$" />
-      <kind value="PACKAGE" />
-      <package value="github.com/tamalsaha/nats-hop-demo" />
-      <directory value="$PROJECT_DIR$" />
-      <filePath value="$PROJECT_DIR$/main.go" />
-      <method v="2" />
-    </configuration>
+}</component>
+  <component name="RunManager" selected="Go Build.go build github.com/tamalsaha/nats-hop-demo/invoke-func">
     <configuration name="go build github.com/tamalsaha/nats-hop-demo/crt" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
       <module name="nats-hop-demo" />
       <working_directory value="$PROJECT_DIR$" />
@@ -82,6 +75,15 @@
       <package value="github.com/tamalsaha/nats-hop-demo/gen-installer" />
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$/gen-installer/main.go" />
+      <method v="2" />
+    </configuration>
+    <configuration name="go build github.com/tamalsaha/nats-hop-demo/invoke-func" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+      <module name="nats-hop-demo" />
+      <working_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="github.com/tamalsaha/nats-hop-demo/invoke-func" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$/invoke-func/main.go" />
       <method v="2" />
     </configuration>
     <configuration name="go build github.com/tamalsaha/nats-hop-demo/logr-demo" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
@@ -102,18 +104,19 @@
       <filePath value="$PROJECT_DIR$/url-gen/main.go" />
       <method v="2" />
     </configuration>
-    <configuration default="true" type="OPA_TEST_RUN_CONFIGURATION" factoryName="Opa configuration factory">
+    <configuration default="true" type="OPA_RUN_CONFIGURATION" factoryName="Opa configuration factory">
+      <option name="query" value="" />
       <option name="additionalargs" value="" />
       <envs />
       <method v="2" />
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Go Build.go build github.com/tamalsaha/nats-hop-demo/invoke-func" />
         <item itemvalue="Go Build.go build github.com/tamalsaha/nats-hop-demo/logr-demo" />
         <item itemvalue="Go Build.go build github.com/tamalsaha/nats-hop-demo/url-gen" />
         <item itemvalue="Go Build.go build github.com/tamalsaha/nats-hop-demo/gen-installer" />
         <item itemvalue="Go Build.go build github.com/tamalsaha/nats-hop-demo/crt" />
-        <item itemvalue="Go Build.go build github.com/tamalsaha/nats-hop-demo" />
       </list>
     </recent_temporary>
   </component>
