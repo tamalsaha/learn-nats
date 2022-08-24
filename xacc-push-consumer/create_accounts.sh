@@ -18,9 +18,9 @@ nsc add user todd-test-c -a todd-test-c
 
 nsc push -u nats://localhost:4222 -A
 
-nats context add test-a --server localhost:4222 --creds $NKEYS_PATH/creds/A/todd-test-a/todd-test-a.creds
-nats context add test-b --server localhost:4222 --creds $NKEYS_PATH/creds/A/todd-test-b/todd-test-b.creds
-nats context add test-c --server localhost:4222 --creds $NKEYS_PATH/creds/A/todd-test-c/todd-test-c.creds
+nats context add test-a --server localhost:4222 --creds $NKEYS_PATH/creds/appscode/todd-test-a/todd-test-a.creds
+nats context add test-b --server localhost:4222 --creds $NKEYS_PATH/creds/appscode/todd-test-b/todd-test-b.creds
+nats context add test-c --server localhost:4222 --creds $NKEYS_PATH/creds/appscode/todd-test-c/todd-test-c.creds
 
 
 echo ""
