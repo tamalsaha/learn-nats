@@ -1,6 +1,22 @@
 # Share a JetStream Consumer message feed as a stream
 
+## Start a nats-server
+
 ```bash
+$ nsc env
+$ nsc init # create an operator called `appscode`
+$ nsc list keys -A
+
+$ nsc generate config --config-file server.conf --nats-resolver
+$ nats-server -js -m 8222 -c server.conf
+```
+
+## Set up accounts
+
+```bash
+# create nats accounts
+./create-accounts.sh
+
 # as test-a context
 ./js-bootstrap.sh
 
@@ -9,7 +25,11 @@
 
 # with access to test-b account privatekey
 ./acct-import.sh -a
+```
 
+## Test Cross Account Push Consumer
+
+```bash
 # as test-a
 nats request --context "test-a" "retail.v1.order.captured" "Captured order 1234!"
 14:36:10 Sending request on "retail.v1.order.captured"

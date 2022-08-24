@@ -5,9 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c0dc91f8-e088-434a-9a49-b39f6dc7b1a0" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/invoke-func/main.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/logr-demo/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/logr-demo/main.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -154,6 +152,11 @@
           <url>file://$PROJECT_DIR$/gen-installer/main.go</url>
           <line>89</line>
           <option name="timeStamp" value="3" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/invoke-func/main.go</url>
+          <line>16</line>
+          <option name="timeStamp" value="4" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
