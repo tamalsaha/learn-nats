@@ -1,5 +1,10 @@
 # Share a JetStream Consumer message feed as a stream
 
+## Study Material
+
+- https://github.com/ConnectEverything/ngs-xacct-guide/blob/main/JetStreamStreamShare.md
+- https://github.com/ConnectEverything/ngs-xacct-demo/tree/main/js-consumer-stream
+
 ## Start a nats-server
 
 ```bash
