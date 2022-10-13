@@ -22,20 +22,7 @@ func main() {
 	}
 	defer nc.Drain()
 
-	// fmt.Println(xid.New().String())
-
-	//msg := &nats.Msg{
-	//	Subject: "k8s.proxy.handler.cid_b",
-	//	Reply:   "k8s.proxy.resp.1",
-	//	Header:  nil,
-	//	Data:    []byte("hello"),
-	//	Sub:     nil,
-	//}
-	//reply, err := nc.RequestMsg(msg, 10*time.Second)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//fmt.Println(string(reply.Data))
+	// SEE: https://github.com/nats-io/nats.docs/blob/master/using-nats/developing-with-nats/sending/replyto.md#including-a-reply-subject
 
 	// Create a unique subject name for replies.
 	uid := xid.New().String()

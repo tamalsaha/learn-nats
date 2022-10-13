@@ -1,4 +1,6 @@
+# Cluster Connector Reverse Export
 
+# Run nats server
 ```
 > nsc init
 ? enter a configuration directory /Users/tamal/.local/share/nats/nsc/stores
@@ -148,7 +150,7 @@ nsc describe account A
 +-------------------------+--------+-------------------------+-------------------+---------+--------------+--------+
 ```
 
-# Test stream export/import
+## Test stream export/import
 
 ```
 > nsc push -u nats://localhost:4222 -A
@@ -196,7 +198,7 @@ nsc generate activation \
 > nsc describe account B
 ```
 
-# Test service export/import
+## Test service export/import
 
 ```
 > nsc push -u nats://localhost:4222 -A
@@ -221,12 +223,15 @@ NKEYS_PATH=$HOME/.local/share/nats/nsc/keys
 
 ## Combined mode
 
+- https://github.com/nats-io/nats.docs/blob/master/using-nats/developing-with-nats/sending/replyto.md
 
+```
+> go run reply/main.go
+REQ: hello REPLY_TO: k8s.proxy.resp.cd3sfv27qo0lcesii46g
 
+```
 
-
-
-
-
-
-
+```
+> go run req/main.go
+2022/10/13 01:10:36 Reply: echo>>>hello
+```
