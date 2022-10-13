@@ -82,7 +82,7 @@ Success!! - generated `~/go/src/github.com/tamalsaha/learn-nats/server.conf`
 > nsc add account B
 [ OK ] generated and stored account key "AAT5B2HSGG3HACTVNA6FYXCVPSO6VRYHV44XTJZAPQY2PCARH2IUSVXD"
 [ OK ] added account "B"
-tamal@m1 ~/g/s/g/t/l/revsvc (master)> nsc add user y -a B
+> nsc add user y -a B
 [ OK ] generated and stored user key "UB7E6UJI7Q2MQHLFGFYGHAWTL27KTB23VEFXWOZ3YMU36SAVW3C6GK4A"
 [ OK ] generated user creds file `~/.local/share/nats/nsc/keys/creds/appscode/B/y.creds`
 [ OK ] added user "y" to account "B"
@@ -229,17 +229,6 @@ nsc generate activation \
 ```
 > nsc push -u nats://localhost:4222 -A
 
-# from nsc env
-NKEYS_PATH=$HOME/.local/share/nats/nsc/keys
-
-# B
-> nats sub --creds=$NKEYS_PATH/creds/appscode/B/y.creds k8s.proxy.handler
-
-# A
-> nats pub --creds=$NKEYS_PATH/creds/appscode/A/x.creds k8s.proxy.handler.cid_b hello
-```
-
-```
 # A
 > nats reply --creds=$NKEYS_PATH/creds/appscode/A/x.creds k8s.proxy.resp.cid_b.* "help is here"
 

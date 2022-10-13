@@ -46,6 +46,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	err = sub.Unsubscribe()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Use the response
 	log.Printf("Reply: %s", msg.Data)
 }
