@@ -1,5 +1,7 @@
 # Cluster Connector Reverse Export
 
+**Video:** https://youtu.be/_xEQm9UtZIU
+
 # Run nats server
 
 ```
