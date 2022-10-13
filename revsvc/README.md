@@ -1,6 +1,32 @@
 # Cluster Connector Reverse Export
 
 # Run nats server
+
+```
+> nsc env
++----------------------------------------------------------------------------------------------------------+
+|                                             NSC Environment                                              |
++--------------------+-----+-------------------------------------------------------------------------------+
+| Setting            | Set | Effective Value                                                               |
++--------------------+-----+-------------------------------------------------------------------------------+
+| $NSC_CWD_ONLY      | No  | If set, default operator/account from cwd only                                |
+| $NSC_NO_GIT_IGNORE | No  | If set, no .gitignore files written                                           |
+| $NKEYS_PATH        | No  | ~/.local/share/nats/nsc/keys                                                  |
+| $NSC_HOME          | No  | ~/.config/nats/nsc                                                            |
+| $NATS_CA           | No  | If set, root CAs in the referenced file will be used for nats connections     |
+|                    |     | If not set, will default to the system trust store                            |
+| $NATS_KEY          | No  | If set, the tls key in the referenced file will be used for nats connections  |
+| $NATS_CERT         | No  | If set, the tls cert in the referenced file will be used for nats connections |
++--------------------+-----+-------------------------------------------------------------------------------+
+| From CWD           |     | No                                                                            |
+| Default Stores Dir |     | ~/.local/share/nats/nsc/stores                                                |
+| Current Store Dir  |     | ~/.local/share/nats/nsc/stores                                                |
+| Current Operator   |     | appscode                                                                      |
+| Current Account    |     | B                                                                             |
+| Root CAs to trust  |     | Default: System Trust Store                                                   |
++--------------------+-----+-------------------------------------------------------------------------------+
+```
+
 ```
 > nsc init
 ? enter a configuration directory /Users/tamal/.local/share/nats/nsc/stores
