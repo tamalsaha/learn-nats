@@ -65,7 +65,7 @@ Success!! - generated `~/go/src/github.com/tamalsaha/learn-nats/server.conf`
               [ OK ] pushed to a total of 1 nats-server
 ```
 
-# A represents Admin account
+# A represents an Admin account
 ```
 > nsc add account A
 [ OK ] generated and stored account key "ABBT43KI7PLDNI5555ZWDXJDSGWOO6UZ3SBIXXOI7EDILR67NUTSI4EL"
@@ -77,7 +77,7 @@ Success!! - generated `~/go/src/github.com/tamalsaha/learn-nats/server.conf`
 [ OK ] added user "x" to account "A"
 ```
 
-# B is a Kubernetes cluster
+# B represents a Kubernetes cluster
 ```
 > nsc add account B
 [ OK ] generated and stored account key "AAT5B2HSGG3HACTVNA6FYXCVPSO6VRYHV44XTJZAPQY2PCARH2IUSVXD"
