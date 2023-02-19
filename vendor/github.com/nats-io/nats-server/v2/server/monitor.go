@@ -14,12 +14,17 @@
 package server
 
 import (
+	"crypto/sha256"
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strconv"
@@ -35,9 +40,13 @@ import (
 var numCores int
 var maxProcs int
 
-func init() {
+func SnapshotMonitorInfo() {
 	numCores = runtime.NumCPU()
 	maxProcs = runtime.GOMAXPROCS(0)
+}
+
+func init() {
+	SnapshotMonitorInfo()
 }
 
 // Connz represents detailed information on current client connections.
@@ -92,10 +101,6 @@ type ConnzOptions struct {
 
 	// Filter by subject interest
 	FilterSubject string `json:"filter_subject"`
-
-	// Private indication that this request is from an account and not a system account.
-	// Used to not leak system level information to the account.
-	isAccountReq bool
 }
 
 // ConnState is for filtering states of connections. We will only have two, open and closed.
@@ -112,38 +117,46 @@ const (
 
 // ConnInfo has detailed information on a per connection basis.
 type ConnInfo struct {
-	Cid            uint64      `json:"cid"`
-	Kind           string      `json:"kind,omitempty"`
-	Type           string      `json:"type,omitempty"`
-	IP             string      `json:"ip"`
-	Port           int         `json:"port"`
-	Start          time.Time   `json:"start"`
-	LastActivity   time.Time   `json:"last_activity"`
-	Stop           *time.Time  `json:"stop,omitempty"`
-	Reason         string      `json:"reason,omitempty"`
-	RTT            string      `json:"rtt,omitempty"`
-	Uptime         string      `json:"uptime"`
-	Idle           string      `json:"idle"`
-	Pending        int         `json:"pending_bytes"`
-	InMsgs         int64       `json:"in_msgs"`
-	OutMsgs        int64       `json:"out_msgs"`
-	InBytes        int64       `json:"in_bytes"`
-	OutBytes       int64       `json:"out_bytes"`
-	NumSubs        uint32      `json:"subscriptions"`
-	Name           string      `json:"name,omitempty"`
-	Lang           string      `json:"lang,omitempty"`
-	Version        string      `json:"version,omitempty"`
-	TLSVersion     string      `json:"tls_version,omitempty"`
-	TLSCipher      string      `json:"tls_cipher_suite,omitempty"`
-	AuthorizedUser string      `json:"authorized_user,omitempty"`
-	Account        string      `json:"account,omitempty"`
-	Subs           []string    `json:"subscriptions_list,omitempty"`
-	SubsDetail     []SubDetail `json:"subscriptions_list_detail,omitempty"`
-	JWT            string      `json:"jwt,omitempty"`
-	IssuerKey      string      `json:"issuer_key,omitempty"`
-	NameTag        string      `json:"name_tag,omitempty"`
-	Tags           jwt.TagList `json:"tags,omitempty"`
-	MQTTClient     string      `json:"mqtt_client,omitempty"` // This is the MQTT client id
+	Cid            uint64         `json:"cid"`
+	Kind           string         `json:"kind,omitempty"`
+	Type           string         `json:"type,omitempty"`
+	IP             string         `json:"ip"`
+	Port           int            `json:"port"`
+	Start          time.Time      `json:"start"`
+	LastActivity   time.Time      `json:"last_activity"`
+	Stop           *time.Time     `json:"stop,omitempty"`
+	Reason         string         `json:"reason,omitempty"`
+	RTT            string         `json:"rtt,omitempty"`
+	Uptime         string         `json:"uptime"`
+	Idle           string         `json:"idle"`
+	Pending        int            `json:"pending_bytes"`
+	InMsgs         int64          `json:"in_msgs"`
+	OutMsgs        int64          `json:"out_msgs"`
+	InBytes        int64          `json:"in_bytes"`
+	OutBytes       int64          `json:"out_bytes"`
+	NumSubs        uint32         `json:"subscriptions"`
+	Name           string         `json:"name,omitempty"`
+	Lang           string         `json:"lang,omitempty"`
+	Version        string         `json:"version,omitempty"`
+	TLSVersion     string         `json:"tls_version,omitempty"`
+	TLSCipher      string         `json:"tls_cipher_suite,omitempty"`
+	TLSPeerCerts   []*TLSPeerCert `json:"tls_peer_certs,omitempty"`
+	AuthorizedUser string         `json:"authorized_user,omitempty"`
+	Account        string         `json:"account,omitempty"`
+	Subs           []string       `json:"subscriptions_list,omitempty"`
+	SubsDetail     []SubDetail    `json:"subscriptions_list_detail,omitempty"`
+	JWT            string         `json:"jwt,omitempty"`
+	IssuerKey      string         `json:"issuer_key,omitempty"`
+	NameTag        string         `json:"name_tag,omitempty"`
+	Tags           jwt.TagList    `json:"tags,omitempty"`
+	MQTTClient     string         `json:"mqtt_client,omitempty"` // This is the MQTT client id
+}
+
+// TLSPeerCert contains basic information about a TLS peer certificate
+type TLSPeerCert struct {
+	Subject          string `json:"subject,omitempty"`
+	SubjectPKISha256 string `json:"spki_sha256,omitempty"`
+	CertSha256       string `json:"cert_sha256,omitempty"`
 }
 
 // DefaultConnListSize is the default size of the connection list.
@@ -256,9 +269,6 @@ func (s *Server) Connz(opts *ConnzOptions) (*Connz, error) {
 
 	var clist map[uint64]*client
 
-	// If this is an account scoped request from a no $SYS account.
-	isAccReq := acc != _EMPTY_ && opts.isAccountReq
-
 	if acc != _EMPTY_ {
 		var err error
 		a, err = s.lookupAccount(acc)
@@ -300,7 +310,7 @@ func (s *Server) Connz(opts *ConnzOptions) (*Connz, error) {
 	}
 
 	// We may need to filter these connections.
-	if isAccReq && len(closedClients) > 0 {
+	if acc != _EMPTY_ && len(closedClients) > 0 {
 		var ccc []*closedClient
 		for _, cc := range closedClients {
 			if cc.acc == acc {
@@ -401,7 +411,7 @@ func (s *Server) Connz(opts *ConnzOptions) (*Connz, error) {
 	for _, client := range openClients {
 		client.mu.Lock()
 		ci := &conns[i]
-		ci.fill(client, client.nc, c.Now)
+		ci.fill(client, client.nc, c.Now, auth)
 		// Fill in subscription data if requested.
 		if len(client.subs) > 0 {
 			if subsDet {
@@ -531,7 +541,7 @@ func (s *Server) Connz(opts *ConnzOptions) (*Connz, error) {
 
 // Fills in the ConnInfo from the client.
 // client should be locked.
-func (ci *ConnInfo) fill(client *client, nc net.Conn, now time.Time) {
+func (ci *ConnInfo) fill(client *client, nc net.Conn, now time.Time, auth bool) {
 	ci.Cid = client.cid
 	ci.MQTTClient = client.getMQTTClientID()
 	ci.Kind = client.kindString()
@@ -561,12 +571,27 @@ func (ci *ConnInfo) fill(client *client, nc net.Conn, now time.Time) {
 		cs := conn.ConnectionState()
 		ci.TLSVersion = tlsVersion(cs.Version)
 		ci.TLSCipher = tlsCipher(cs.CipherSuite)
+		if auth && len(cs.PeerCertificates) > 0 {
+			ci.TLSPeerCerts = makePeerCerts(cs.PeerCertificates)
+		}
 	}
 
 	if client.port != 0 {
 		ci.Port = int(client.port)
 		ci.IP = client.host
 	}
+}
+
+func makePeerCerts(pc []*x509.Certificate) []*TLSPeerCert {
+	res := make([]*TLSPeerCert, len(pc))
+	for i, c := range pc {
+		tmp := sha256.Sum256(c.RawSubjectPublicKeyInfo)
+		ssha := hex.EncodeToString(tmp[:])
+		tmp = sha256.Sum256(c.Raw)
+		csha := hex.EncodeToString(tmp[:])
+		res[i] = &TLSPeerCert{Subject: c.Subject.String(), SubjectPKISha256: ssha, CertSha256: csha}
+	}
+	return res
 }
 
 // Assume lock is held
@@ -1348,6 +1373,7 @@ func (s *Server) HandleRoot(w http.ResponseWriter, r *http.Request) {
 	<a href=.%s>JetStream</a>
 	<a href=.%s>Connections</a>
 	<a href=.%s>Accounts</a>
+	<a href=.%s>Account Stats</a>
 	<a href=.%s>Subscriptions</a>
 	<a href=.%s>Routes</a>
 	<a href=.%s>LeafNodes</a>
@@ -1362,6 +1388,7 @@ func (s *Server) HandleRoot(w http.ResponseWriter, r *http.Request) {
 		s.basePath(JszPath),
 		s.basePath(ConnzPath),
 		s.basePath(AccountzPath),
+		s.basePath(AccountStatzPath),
 		s.basePath(SubszPath),
 		s.basePath(RoutezPath),
 		s.basePath(LeafzPath),
@@ -1382,7 +1409,7 @@ func (s *Server) updateJszVarz(js *jetStream, v *JetStreamVarz, doConfig bool) {
 	v.Stats = js.usageStats()
 	if mg := js.getMetaGroup(); mg != nil {
 		if ci := s.raftNodeToClusterInfo(mg); ci != nil {
-			v.Meta = &MetaClusterInfo{Name: ci.Name, Leader: ci.Leader, Size: mg.ClusterSize()}
+			v.Meta = &MetaClusterInfo{Name: ci.Name, Leader: ci.Leader, Peer: getHash(ci.Leader), Size: mg.ClusterSize()}
 			if ci.Leader == s.info.Name {
 				v.Meta.Replicas = ci.Replicas
 			}
@@ -1782,7 +1809,7 @@ func (s *Server) Gatewayz(opts *GatewayzOptions) (*Gatewayz, error) {
 	now := time.Now().UTC()
 	gw := s.gateway
 	gw.RLock()
-	if !gw.enabled {
+	if !gw.enabled || gw.info == nil {
 		gw.RUnlock()
 		gwz := &Gatewayz{
 			ID:               srvID,
@@ -1874,7 +1901,7 @@ func createOutboundRemoteGatewayz(c *client, opts *GatewayzOptions, now time.Tim
 			rgw.IsConfigured = !c.gw.cfg.isImplicit()
 		}
 		rgw.Connection = &ConnInfo{}
-		rgw.Connection.fill(c, c.nc, now)
+		rgw.Connection.fill(c, c.nc, now, false)
 		name = c.gw.name
 	}
 	c.mu.Unlock()
@@ -1958,7 +1985,7 @@ func (s *Server) createInboundsRemoteGatewayz(opts *GatewayzOptions, now time.Ti
 				rgw.Accounts = createInboundAccountsGatewayz(opts, c.gw)
 			}
 			rgw.Connection = &ConnInfo{}
-			rgw.Connection.fill(c, c.nc, now)
+			rgw.Connection.fill(c, c.nc, now, false)
 			igws = append(igws, rgw)
 			m[c.gw.name] = igws
 		}
@@ -2156,6 +2183,78 @@ func (s *Server) HandleLeafz(w http.ResponseWriter, r *http.Request) {
 	ResponseHandler(w, r, b)
 }
 
+// Leafz represents detailed information on Leafnodes.
+type AccountStatz struct {
+	ID       string         `json:"server_id"`
+	Now      time.Time      `json:"now"`
+	Accounts []*AccountStat `json:"account_statz"`
+}
+
+// LeafzOptions are options passed to Leafz
+type AccountStatzOptions struct {
+	Accounts      []string `json:"accounts"`
+	IncludeUnused bool     `json:"include_unused"`
+}
+
+// Leafz returns a AccountStatz structure containing summary information about accounts.
+func (s *Server) AccountStatz(opts *AccountStatzOptions) (*AccountStatz, error) {
+	stz := &AccountStatz{
+		ID:       s.ID(),
+		Now:      time.Now().UTC(),
+		Accounts: []*AccountStat{},
+	}
+	if opts == nil || len(opts.Accounts) == 0 {
+		s.accounts.Range(func(key, a interface{}) bool {
+			acc := a.(*Account)
+			acc.mu.RLock()
+			if opts.IncludeUnused || acc.numLocalConnections() != 0 {
+				stz.Accounts = append(stz.Accounts, acc.statz())
+			}
+			acc.mu.RUnlock()
+			return true
+		})
+	} else {
+		for _, a := range opts.Accounts {
+			if acc, ok := s.accounts.Load(a); ok {
+				acc := acc.(*Account)
+				acc.mu.RLock()
+				if opts.IncludeUnused || acc.numLocalConnections() != 0 {
+					stz.Accounts = append(stz.Accounts, acc.statz())
+				}
+				acc.mu.RUnlock()
+			}
+		}
+	}
+	return stz, nil
+}
+
+// HandleAccountStatz process HTTP requests for statz information of all accounts.
+func (s *Server) HandleAccountStatz(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	s.httpReqStats[AccountStatzPath]++
+	s.mu.Unlock()
+
+	unused, err := decodeBool(w, r, "unused")
+	if err != nil {
+		return
+	}
+
+	l, err := s.AccountStatz(&AccountStatzOptions{IncludeUnused: unused})
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	b, err := json.MarshalIndent(l, "", "  ")
+	if err != nil {
+		s.Errorf("Error marshaling response to %s request: %v", AccountStatzPath, err)
+		return
+	}
+
+	// Handle response
+	ResponseHandler(w, r, b)
+}
+
 // ResponseHandler handles responses for monitoring routes
 func ResponseHandler(w http.ResponseWriter, r *http.Request, data []byte) {
 	// Get callback from request
@@ -2240,6 +2339,8 @@ func (reason ClosedState) String() string {
 		return "Duplicate Server Name"
 	case MinimumVersionRequired:
 		return "Minimum Version Required"
+	case ClusterNamesIdentical:
+		return "Cluster Names Identical"
 	}
 
 	return "Unknown State"
@@ -2534,8 +2635,17 @@ type JSzOptions struct {
 	Limit      int    `json:"limit,omitempty"`
 }
 
+// HealthzOptions are options passed to Healthz
+type HealthzOptions struct {
+	// Deprecated: Use JSEnabledOnly instead
+	JSEnabled     bool `json:"js-enabled,omitempty"`
+	JSEnabledOnly bool `json:"js-enabled-only,omitempty"`
+	JSServerOnly  bool `json:"js-server-only,omitempty"`
+}
+
 type StreamDetail struct {
 	Name     string              `json:"name"`
+	Created  time.Time           `json:"created"`
 	Cluster  *ClusterInfo        `json:"cluster,omitempty"`
 	Config   *StreamConfig       `json:"config,omitempty"`
 	State    StreamState         `json:"state,omitempty"`
@@ -2555,6 +2665,7 @@ type AccountDetail struct {
 type MetaClusterInfo struct {
 	Name     string      `json:"name,omitempty"`
 	Leader   string      `json:"leader,omitempty"`
+	Peer     string      `json:"peer,omitempty"`
 	Replicas []*PeerInfo `json:"replicas,omitempty"`
 	Size     int         `json:"cluster_size"`
 }
@@ -2599,6 +2710,11 @@ func (s *Server) accountDetail(jsa *jsAccount, optStreams, optConsumers, optCfg 
 		},
 		Streams: make([]StreamDetail, 0, len(jsa.streams)),
 	}
+	if reserved, ok := jsa.limits[_EMPTY_]; ok {
+		detail.JetStreamStats.ReservedMemory = uint64(reserved.MaxMemory)
+		detail.JetStreamStats.ReservedStore = uint64(reserved.MaxStore)
+	}
+
 	jsa.usageMu.RUnlock()
 	var streams []*stream
 	if optStreams {
@@ -2618,6 +2734,7 @@ func (s *Server) accountDetail(jsa *jsAccount, optStreams, optConsumers, optCfg 
 			}
 			sdet := StreamDetail{
 				Name:    stream.name(),
+				Created: stream.createdTime(),
 				State:   stream.state(),
 				Cluster: ci,
 				Config:  cfg,
@@ -2729,7 +2846,7 @@ func (s *Server) Jsz(opts *JSzOptions) (*JSInfo, error) {
 
 	if mg := js.getMetaGroup(); mg != nil {
 		if ci := s.raftNodeToClusterInfo(mg); ci != nil {
-			jsi.Meta = &MetaClusterInfo{Name: ci.Name, Leader: ci.Leader, Size: mg.ClusterSize()}
+			jsi.Meta = &MetaClusterInfo{Name: ci.Name, Leader: ci.Leader, Peer: getHash(ci.Leader), Size: mg.ClusterSize()}
 			if isLeader {
 				jsi.Meta.Replicas = ci.Replicas
 			}
@@ -2859,7 +2976,27 @@ func (s *Server) HandleHealthz(w http.ResponseWriter, r *http.Request) {
 	s.httpReqStats[HealthzPath]++
 	s.mu.Unlock()
 
-	hs := s.healthz()
+	jsEnabled, err := decodeBool(w, r, "js-enabled")
+	if err != nil {
+		return
+	}
+	if jsEnabled {
+		s.Warnf("Healthcheck: js-enabled deprecated, use js-enabled-only instead")
+	}
+	jsEnabledOnly, err := decodeBool(w, r, "js-enabled-only")
+	if err != nil {
+		return
+	}
+	jsServerOnly, err := decodeBool(w, r, "js-server-only")
+	if err != nil {
+		return
+	}
+
+	hs := s.healthz(&HealthzOptions{
+		JSEnabled:     jsEnabled,
+		JSEnabledOnly: jsEnabledOnly,
+		JSServerOnly:  jsServerOnly,
+	})
 	if hs.Error != _EMPTY_ {
 		s.Warnf("Healthcheck failed: %q", hs.Error)
 		w.WriteHeader(http.StatusServiceUnavailable)
@@ -2873,8 +3010,13 @@ func (s *Server) HandleHealthz(w http.ResponseWriter, r *http.Request) {
 }
 
 // Generate health status.
-func (s *Server) healthz() *HealthStatus {
+func (s *Server) healthz(opts *HealthzOptions) *HealthStatus {
 	var health = &HealthStatus{Status: "ok"}
+
+	// set option defaults
+	if opts == nil {
+		opts = &HealthzOptions{}
+	}
 
 	if err := s.readyForConnections(time.Millisecond); err != nil {
 		health.Status = "error"
@@ -2882,9 +3024,23 @@ func (s *Server) healthz() *HealthStatus {
 		return health
 	}
 
-	// Check JetStream
+	sopts := s.getOpts()
+
+	// If JS is not enabled in the config, we stop.
+	if !sopts.JetStream {
+		return health
+	}
+
+	// Access the Jetstream state to perform additional checks.
 	js := s.getJetStream()
-	if js == nil {
+
+	if !js.isEnabled() {
+		health.Status = "unavailable"
+		health.Error = NewJSNotEnabledError().Error()
+		return health
+	}
+	// Only check if JS is enabled, skip meta and asset check.
+	if opts.JSEnabledOnly || opts.JSEnabled {
 		return health
 	}
 
@@ -2894,8 +3050,30 @@ func (s *Server) healthz() *HealthStatus {
 
 	cc := js.cluster
 
-	// Currently single server mode this is a no-op.
+	const na = "unavailable"
+
+	// Currently single server we make sure the streams were recovered.
 	if cc == nil || cc.meta == nil {
+		sdir := js.config.StoreDir
+		// Whip through account folders and pull each stream name.
+		fis, _ := os.ReadDir(sdir)
+		for _, fi := range fis {
+			acc, err := s.LookupAccount(fi.Name())
+			if err != nil {
+				health.Status = na
+				health.Error = fmt.Sprintf("JetStream account '%s' could not be resolved", fi.Name())
+				return health
+			}
+			sfis, _ := os.ReadDir(filepath.Join(sdir, fi.Name(), "streams"))
+			for _, sfi := range sfis {
+				stream := sfi.Name()
+				if _, err := acc.lookupStream(stream); err != nil {
+					health.Status = na
+					health.Error = fmt.Sprintf("JetStream stream '%s > %s' could not be recovered", acc, stream)
+					return health
+				}
+			}
+		}
 		return health
 	}
 
@@ -2905,14 +3083,19 @@ func (s *Server) healthz() *HealthStatus {
 
 	// If no meta leader.
 	if meta.GroupLeader() == _EMPTY_ {
-		health.Status = "unavailable"
+		health.Status = na
 		health.Error = "JetStream has not established contact with a meta leader"
 		return health
 	}
 	// If we are not current with the meta leader.
 	if !meta.Current() {
-		health.Status = "unavailable"
+		health.Status = na
 		health.Error = "JetStream is not current with the meta leader"
+		return health
+	}
+
+	// If JSServerOnly is true, then do not check further accounts, streams and consumers.
+	if opts.JSServerOnly {
 		return health
 	}
 
@@ -2922,8 +3105,8 @@ func (s *Server) healthz() *HealthStatus {
 		for stream, sa := range asa {
 			if sa.Group.isMember(ourID) {
 				// Make sure we can look up
-				if !cc.isStreamCurrent(acc, stream) {
-					health.Status = "unavailable"
+				if !cc.isStreamHealthy(acc, stream) {
+					health.Status = na
 					health.Error = fmt.Sprintf("JetStream stream '%s > %s' is not current", acc, stream)
 					return health
 				}
@@ -2931,7 +3114,7 @@ func (s *Server) healthz() *HealthStatus {
 				for consumer, ca := range sa.consumers {
 					if ca.Group.isMember(ourID) {
 						if !cc.isConsumerCurrent(acc, stream, consumer) {
-							health.Status = "unavailable"
+							health.Status = na
 							health.Error = fmt.Sprintf("JetStream consumer '%s > %s > %s' is not current", acc, stream, consumer)
 							return health
 						}

@@ -7,8 +7,8 @@ require (
 	github.com/go-logr/logr v1.2.3
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
-	github.com/nats-io/nats-server/v2 v2.8.4
-	github.com/nats-io/nats.go v1.16.0
+	github.com/nats-io/nats-server/v2 v2.9.14
+	github.com/nats-io/nats.go v1.23.0
 	github.com/rs/xid v1.2.1
 	github.com/unrolled/render v1.5.0
 	go.bytebuilders.dev/audit v0.0.22
@@ -129,7 +129,7 @@ require (
 	github.com/jonboulle/clockwork v0.3.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.15.1 // indirect
+	github.com/klauspost/compress v1.15.15 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/leodido/go-urn v1.2.0 // indirect
@@ -154,7 +154,7 @@ require (
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/nats-io/jwt/v2 v2.2.1-0.20220330180145-442af02fd36a // indirect
+	github.com/nats-io/jwt/v2 v2.3.0 // indirect
 	github.com/nats-io/nkeys v0.3.0 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/oklog/ulid/v2 v2.0.2 // indirect
@@ -191,13 +191,13 @@ require (
 	go.wandrs.dev/http v0.0.1 // indirect
 	go.wandrs.dev/inject v0.0.1 // indirect
 	gocloud.dev v0.25.0 // indirect
-	golang.org/x/crypto v0.0.0-20220331220935-ae2d96664a29 // indirect
-	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e // indirect
+	golang.org/x/crypto v0.5.0 // indirect
+	golang.org/x/net v0.5.0 // indirect
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
-	golang.org/x/sys v0.0.0-20220615213510-4f61da869c0c // indirect
-	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
-	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
+	golang.org/x/sys v0.4.0 // indirect
+	golang.org/x/term v0.4.0 // indirect
+	golang.org/x/text v0.6.0 // indirect
+	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	gomodules.xyz/encoding v0.0.5 // indirect
 	gomodules.xyz/pointer v0.1.0 // indirect

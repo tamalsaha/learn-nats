@@ -6,8 +6,21 @@
   <component name="ChangeListManager">
     <list default="true" id="c0dc91f8-e088-434a-9a49-b39f6dc7b1a0" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/revsvc/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/revsvc/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/revsvc/req/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/revsvc/req/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/.travis.yml" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/.travis.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/TODO.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/context.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/context.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/go_test.mod" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/go_test.mod" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/go_test.sum" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/go_test.sum" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/js.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/js.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/jsm.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/jsm.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/kv.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/kv.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/nats.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/nats.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/object.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/github.com/nats-io/nats.go/object.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/modules.txt" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/modules.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -55,10 +68,17 @@
     "WebServerToolWindowFactoryState": "false",
     "go.import.settings.migrated": "true",
     "last_opened_file_path": "/Users/tamal",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
     "nodejs_package_manager_path": "npm"
   }
 }]]></component>
   <component name="RunManager" selected="Go Build.go build github.com/tamalsaha/nats-hop-demo/revsvc/req">
+    <configuration default="true" type="OPA_TEST_RUN_CONFIGURATION" factoryName="Opa configuration factory">
+      <option name="additionalargs" value="" />
+      <envs />
+      <method v="2" />
+    </configuration>
     <configuration name="go build github.com/tamalsaha/nats-hop-demo/invoke-func" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
       <module name="nats-hop-demo" />
       <working_directory value="$PROJECT_DIR$" />
@@ -102,11 +122,6 @@
       <package value="github.com/tamalsaha/nats-hop-demo/url-gen" />
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$/url-gen/main.go" />
-      <method v="2" />
-    </configuration>
-    <configuration default="true" type="OPA_TEST_RUN_CONFIGURATION" factoryName="Opa configuration factory">
-      <option name="additionalargs" value="" />
-      <envs />
       <method v="2" />
     </configuration>
     <recent_temporary>
