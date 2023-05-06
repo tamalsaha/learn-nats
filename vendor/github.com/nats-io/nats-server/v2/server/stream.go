@@ -777,9 +777,7 @@ func (mset *stream) rebuildDedupe() {
 	}
 
 	var smv StoreMsg
-	var state StreamState
-	mset.store.FastState(&state)
-
+	state := mset.store.State()
 	for seq := sseq; seq <= state.LastSeq; seq++ {
 		sm, err := mset.store.LoadMsg(seq, &smv)
 		if err != nil {
@@ -1168,33 +1166,20 @@ func (s *Server) checkStreamCfg(config *StreamConfig, acc *Account) (StreamConfi
 	// cycle check for source cycle
 	toVisit := []*StreamConfig{&cfg}
 	visited := make(map[string]struct{})
-	overlaps := func(subjects []string, filter string) bool {
-		if filter == _EMPTY_ {
-			return true
-		}
-		for _, subject := range subjects {
-			if SubjectsCollide(subject, filter) {
-				return true
-			}
-		}
-		return false
-	}
-
 	for len(toVisit) > 0 {
 		cfg := toVisit[0]
 		toVisit = toVisit[1:]
 		visited[cfg.Name] = struct{}{}
 		for _, src := range cfg.Sources {
 			if src.External != nil {
+				// TODO (mh) look up service imports and see if src.External.ApiPrefix returns an account
+				// this will be much easier without the delivery subject
 				continue
 			}
-			// We can detect a cycle between streams, but let's double check that the
-			// subjects actually form a cycle.
 			if _, ok := visited[src.Name]; ok {
-				if overlaps(cfg.Subjects, src.FilterSubject) {
-					return StreamConfig{}, NewJSStreamInvalidConfigError(errors.New("detected cycle"))
-				}
-			} else if exists, cfg := getStream(src.Name); exists {
+				return StreamConfig{}, NewJSStreamInvalidConfigError(errors.New("detected cycle"))
+			}
+			if exists, cfg := getStream(src.Name); exists {
 				toVisit = append(toVisit, &cfg)
 			}
 		}
@@ -1557,16 +1542,16 @@ func (mset *stream) updateWithAdvisory(config *StreamConfig, sendAdvisory bool) 
 				delete(mset.sources, iname)
 			}
 		}
-	}
 
-	// Check for a change in allow direct status.
-	// These will run on all members, so just update as appropriate here.
-	// We do make sure we are caught up under monitorStream() during initial startup.
-	if cfg.AllowDirect != ocfg.AllowDirect {
-		if cfg.AllowDirect {
-			mset.subscribeToDirect()
-		} else {
-			mset.unsubscribeToDirect()
+		// If we are not clustered here and we want allow direct, go ahead and inline here.
+		// use cfg.Replicas vs isClustered() in case we are updating.
+		if cfg.Replicas == 1 {
+			// Check direct.
+			if cfg.AllowDirect {
+				mset.subscribeToDirect()
+			} else {
+				mset.unsubscribeToDirect()
+			}
 		}
 	}
 
@@ -1655,17 +1640,10 @@ func (mset *stream) purge(preq *JSApiStreamPurgeRequest) (purged uint64, err err
 
 	mset.clsMu.RLock()
 	for _, o := range mset.cList {
-		// we update consumer sequences if:
-		// no subject was specified, we can purge all consumers sequences
-		if preq == nil ||
-			preq.Subject == _EMPTY_ ||
-			// or consumer filter subject is equal to purged subject
-			preq.Subject == o.cfg.FilterSubject ||
-			// or consumer subject is subset of purged subject,
-			// but not the other way around.
-			subjectIsSubsetMatch(o.cfg.FilterSubject, preq.Subject) {
-			o.purge(fseq, lseq)
+		if preq != nil && !o.isFilteredMatch(preq.Subject) {
+			continue
 		}
+		o.purge(fseq, lseq)
 	}
 	mset.clsMu.RUnlock()
 
@@ -3084,7 +3062,6 @@ func (mset *stream) subscribeToStream() error {
 		}
 	}
 	// Check for direct get access.
-	// We spin up followers for clustered streams in monitorStream().
 	if mset.cfg.AllowDirect {
 		if err := mset.subscribeToDirect(); err != nil {
 			return err
@@ -4487,7 +4464,7 @@ func (mset *stream) stop(deleteFlag, advisory bool) error {
 		if deleteFlag {
 			n.Delete()
 			sa = mset.sa
-		} else if n.NeedSnapshot() {
+		} else {
 			// Attempt snapshot on clean exit.
 			n.InstallSnapshot(mset.stateSnapshotLocked())
 			n.Stop()
@@ -4684,49 +4661,6 @@ func (mset *stream) removeConsumerAsLeader(o *consumer) {
 	defer mset.clsMu.Unlock()
 	if mset.csl != nil {
 		mset.csl.Remove(o.signalSub())
-	}
-}
-
-// swapSigSubs will update signal Subs for a new subject filter.
-// consumer lock should not be held.
-func (mset *stream) swapSigSubs(o *consumer, newFilter string) {
-	mset.clsMu.Lock()
-	o.mu.Lock()
-
-	if o.sigSub != nil {
-		if mset.csl != nil {
-			mset.csl.Remove(o.sigSub)
-		}
-		o.sigSub = nil
-	}
-
-	if o.isLeader() {
-		subject := newFilter
-		if subject == _EMPTY_ {
-			subject = fwcs
-		}
-		o.sigSub = &subscription{subject: []byte(subject), icb: o.processStreamSignal}
-		if mset.csl == nil {
-			mset.csl = NewSublistWithCache()
-		}
-		mset.csl.Insert(o.sigSub)
-	}
-
-	oldFilter := o.cfg.FilterSubject
-
-	o.mu.Unlock()
-	mset.clsMu.Unlock()
-
-	// Do any numFilter accounting needed.
-	mset.mu.Lock()
-	defer mset.mu.Unlock()
-
-	// Decrement numFilter if old filter was an actual filter.
-	if oldFilter != _EMPTY_ && mset.numFilter > 0 {
-		mset.numFilter--
-	}
-	if newFilter != _EMPTY_ {
-		mset.numFilter++
 	}
 }
 
@@ -5091,26 +5025,5 @@ func (mset *stream) checkForOrphanMsgs() {
 		} else {
 			s.Debugf("stream '%s > %s' auto purged %d messages", acc, mset.name(), purged)
 		}
-	}
-}
-
-// Check on startup to make sure that consumers replication matches us.
-// Interest retention requires replication matches.
-func (mset *stream) checkConsumerReplication() {
-	mset.mu.RLock()
-	defer mset.mu.RUnlock()
-
-	if mset.cfg.Retention != InterestPolicy {
-		return
-	}
-
-	s, acc := mset.srv, mset.acc
-	for _, o := range mset.consumers {
-		o.mu.RLock()
-		if mset.cfg.Replicas != o.cfg.Replicas {
-			s.Errorf("consumer '%s > %s > %s' MUST match replication (%d vs %d) of stream with interest policy",
-				acc, mset.cfg.Name, o.cfg.Name, mset.cfg.Replicas, o.cfg.Replicas)
-		}
-		o.mu.RUnlock()
 	}
 }

@@ -12,7 +12,7 @@ spec:
     listKind: ResourceBlockDefinitionList
     plural: resourceblockdefinitions
     singular: resourceblockdefinition
-  scope: Namespaced
+  scope: Cluster
   versions:
   - name: v1alpha1
     schema:
@@ -49,12 +49,35 @@ spec:
                       type: string
                     fieldPath:
                       type: string
+                    icons:
+                      items:
+                        description: ImageSpec contains information about an image
+                          used as an icon.
+                        properties:
+                          size:
+                            description: (optional) The size of the image in pixels
+                              (e.g., 25x25).
+                            type: string
+                          src:
+                            description: The source for image represented as either
+                              an absolute URL to the image or a Data URL containing
+                              the image. Data URLs are defined in RFC 2397.
+                            type: string
+                          type:
+                            description: (optional) The mine type of the image (e.g.,
+                              "image/png").
+                            type: string
+                        required:
+                        - src
+                        type: object
+                      type: array
                     kind:
                       enum:
                       - Block
                       - Self
                       - SubTable
                       - Connection
+                      - Custom
                       type: string
                     name:
                       type: string
@@ -62,7 +85,8 @@ spec:
                       properties:
                         byLabel:
                           enum:
-                          - auth_via
+                          - id
+                          - config
                           - backup_via
                           - catalog
                           - connect_via
@@ -74,6 +98,8 @@ spec:
                           - view
                           - cert_issuer
                           - policy
+                          - recommended_for
+                          - ops
                           type: string
                         raw:
                           type: string
@@ -121,6 +147,21 @@ spec:
                                 description: description is a human readable description
                                   of this column.
                                 type: string
+                              exec:
+                                properties:
+                                  alias:
+                                    type: string
+                                  command:
+                                    items:
+                                      type: string
+                                    type: array
+                                  container:
+                                    type: string
+                                  help:
+                                    type: string
+                                  serviceNameTemplate:
+                                    type: string
+                                type: object
                               format:
                                 description: format is an optional OpenAPI type definition
                                   for this column. The 'name' format is applied to
@@ -208,6 +249,8 @@ spec:
                         name:
                           type: string
                       type: object
+                    width:
+                      type: integer
                   required:
                   - kind
                   - query
@@ -236,10 +279,6 @@ spec:
                     type: string
                 required:
                 - group
-                - kind
-                - name
-                - scope
-                - version
                 type: object
             required:
             - blocks

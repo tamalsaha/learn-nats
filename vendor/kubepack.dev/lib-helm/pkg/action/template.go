@@ -15,16 +15,18 @@ import (
 	libchart "kubepack.dev/lib-helm/pkg/chart"
 	"kubepack.dev/lib-helm/pkg/repo"
 	"kubepack.dev/lib-helm/pkg/values"
+	chartsapi "x-helm.dev/apimachinery/apis/charts/v1alpha1"
+	releasesapi "x-helm.dev/apimachinery/apis/releases/v1alpha1"
 )
 
 type Renderer struct {
 	cfg *ha.Configuration
 
 	opts InstallOptions
-	reg  *repo.Registry
+	reg  repo.IRegistry
 }
 
-func NewRenderer() (*Renderer, error) {
+func NewRenderer(options ...InstallOptions) (*Renderer, error) {
 	cfg := new(ha.Configuration)
 	err := cfg.Init(nil, "default", "secret", debug)
 	if err != nil {
@@ -32,30 +34,35 @@ func NewRenderer() (*Renderer, error) {
 	}
 	cfg.Capabilities = chartutil.DefaultCapabilities
 
-	return NewRendererForConfig(cfg), nil
+	return NewRendererForConfig(cfg, options...), nil
 }
 
-func NewRendererForConfig(cfg *ha.Configuration) *Renderer {
-	opts := InstallOptions{
-		// ChartURL:  url,
-		// ChartName: name,
-		// Version:   version,
-		Values: values.Options{
-			ValuesFile:  "",
-			ValuesPatch: nil,
-		},
-		ClientOnly:   true,
-		DryRun:       true,
-		DisableHooks: false,
-		Replace:      true, // Skip the name check
-		Wait:         false,
-		Devel:        false,
-		Timeout:      0,
-		Namespace:    "default",
-		ReleaseName:  "release-name",
-		Atomic:       false,
-		IncludeCRDs:  false, //
-		SkipCRDs:     true,  //
+func NewRendererForConfig(cfg *ha.Configuration, options ...InstallOptions) *Renderer {
+	var opts InstallOptions
+	if len(options) == 1 {
+		opts = options[0]
+	} else {
+		opts = InstallOptions{
+			// ChartURL:  url,
+			// ChartName: name,
+			// Version:   version,
+			Options: values.Options{
+				ValuesFile:  "",
+				ValuesPatch: nil,
+			},
+			ClientOnly:   true,
+			DryRun:       true,
+			DisableHooks: false,
+			Replace:      true, // Skip the name check
+			Wait:         false,
+			Devel:        false,
+			Timeout:      0,
+			Namespace:    "default",
+			ReleaseName:  "release-name",
+			Atomic:       false,
+			IncludeCRDs:  false, //
+			SkipCRDs:     true,  //
+		}
 	}
 	return &Renderer{
 		cfg:  cfg,
@@ -64,18 +71,38 @@ func NewRendererForConfig(cfg *ha.Configuration) *Renderer {
 }
 
 func (x *Renderer) ForChart(url, name, version string) *Renderer {
-	x.opts.ChartURL = url
-	x.opts.ChartName = name
-	x.opts.Version = version
+	x.opts.ChartSourceFlatRef = releasesapi.ChartSourceFlatRef{
+		Name:            name,
+		Version:         version,
+		SourceAPIGroup:  chartsapi.GroupVersion.Group,
+		SourceKind:      "Legacy",
+		SourceNamespace: "",
+		SourceName:      url,
+	}
 	return x
 }
 
-func (x *Renderer) WithRegistry(reg *repo.Registry) *Renderer {
+func (x *Renderer) ForChartSource(srcRef releasesapi.ChartSourceRef) *Renderer {
+	x.opts.ChartSourceFlatRef.FromAPIObject(srcRef)
+	return x
+}
+
+func (x *Renderer) WithRegistry(reg repo.IRegistry) *Renderer {
 	x.reg = reg
 	return x
 }
 
-func (x *Renderer) Run() (string, map[string]string, error) {
+func (x *Renderer) WithReleaseName(name string) *Renderer {
+	x.opts.ReleaseName = name
+	return x
+}
+
+func (x *Renderer) WithNamespace(ns string) *Renderer {
+	x.opts.Namespace = ns
+	return x
+}
+
+func (x *Renderer) Run() (string, map[string][]string, error) {
 	cmd := ha.NewInstall(x.cfg)
 	var extraAPIs []string
 	cmd.DryRun = x.opts.DryRun
@@ -98,7 +125,7 @@ func (x *Renderer) Run() (string, map[string]string, error) {
 	cmd.Namespace = x.opts.Namespace
 
 	// Check chart dependencies to make sure all are present in /charts
-	chrt, err := x.reg.GetChart(x.opts.ChartURL, x.opts.ChartName, x.opts.Version)
+	chrt, err := x.reg.GetChart(x.opts.ChartSourceFlatRef.ToAPIObject())
 	if err != nil {
 		return "", nil, err
 	}
@@ -107,7 +134,7 @@ func (x *Renderer) Run() (string, map[string]string, error) {
 	}
 
 	if chrt.Metadata.Deprecated {
-		klog.Warningf("WARNING: chart url=%s,name=%s,version=%s is deprecated", x.opts.ChartURL, x.opts.ChartName, x.opts.Version)
+		klog.Warningf("WARNING: chart %+v is deprecated", x.opts.ChartSourceFlatRef)
 	}
 
 	if req := chrt.Metadata.Dependencies; req != nil {
@@ -122,7 +149,7 @@ func (x *Renderer) Run() (string, map[string]string, error) {
 		}
 	}
 
-	vals, err := x.opts.Values.MergeValues(chrt.Chart)
+	vals, err := x.opts.Options.MergeValues(chrt.Chart)
 	if err != nil {
 		return "", nil, err
 	}
@@ -145,7 +172,7 @@ func (x *Renderer) Run() (string, map[string]string, error) {
 		}
 	}
 
-	files := map[string]string{}
+	files := map[string][]string{}
 
 	// This is necessary to ensure consistent manifest ordering when using --show-only
 	// with globs or directory names.
@@ -164,7 +191,7 @@ func (x *Renderer) Run() (string, map[string]string, error) {
 		// well as macOS/linux
 		manifestPath := strings.Join(manifestPathSplit, "/")
 
-		files[manifestPath] = manifest
+		files[manifestPath] = append(files[manifestPath], manifest)
 	}
 
 	return manifests.String(), files, nil

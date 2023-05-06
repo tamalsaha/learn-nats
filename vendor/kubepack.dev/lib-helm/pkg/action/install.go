@@ -17,37 +17,36 @@ import (
 	"kubepack.dev/lib-helm/pkg/engine"
 	"kubepack.dev/lib-helm/pkg/repo"
 	"kubepack.dev/lib-helm/pkg/values"
+	releasesapi "x-helm.dev/apimachinery/apis/releases/v1alpha1"
 )
 
 type InstallOptions struct {
-	ChartURL                 string         `json:"chartURL"`
-	ChartName                string         `json:"chartName"`
-	Version                  string         `json:"version"`
-	Values                   values.Options `json:",inline,omitempty"`
-	ClientOnly               bool           `json:"clientOnly"`
-	DryRun                   bool           `json:"dryRun"`
-	DisableHooks             bool           `json:"disableHooks"`
-	Replace                  bool           `json:"replace"`
-	Wait                     bool           `json:"wait"`
-	Devel                    bool           `json:"devel"`
-	Timeout                  time.Duration  `json:"timeout"`
-	Namespace                string         `json:"namespace"`
-	ReleaseName              string         `json:"releaseName"`
-	Description              string         `json:"description"`
-	Atomic                   bool           `json:"atomic"`
-	SkipCRDs                 bool           `json:"skipCRDs"`
-	SubNotes                 bool           `json:"subNotes"`
-	DisableOpenAPIValidation bool           `json:"disableOpenAPIValidation"`
-	IncludeCRDs              bool           `json:"includeCRDs"`
-	PartOf                   string         `json:"partOf"`
-	CreateNamespace          bool           `json:"createNamespace"`
+	releasesapi.ChartSourceFlatRef `json:",inline,omitempty"`
+	values.Options                 `json:",inline,omitempty"`
+	ClientOnly                     bool          `json:"clientOnly"`
+	DryRun                         bool          `json:"dryRun"`
+	DisableHooks                   bool          `json:"disableHooks"`
+	Replace                        bool          `json:"replace"`
+	Wait                           bool          `json:"wait"`
+	Devel                          bool          `json:"devel"`
+	Timeout                        time.Duration `json:"timeout"`
+	Namespace                      string        `json:"namespace"`
+	ReleaseName                    string        `json:"releaseName"`
+	Description                    string        `json:"description"`
+	Atomic                         bool          `json:"atomic"`
+	SkipCRDs                       bool          `json:"skipCRDs"`
+	SubNotes                       bool          `json:"subNotes"`
+	DisableOpenAPIValidation       bool          `json:"disableOpenAPIValidation"`
+	IncludeCRDs                    bool          `json:"includeCRDs"`
+	PartOf                         string        `json:"partOf"`
+	CreateNamespace                bool          `json:"createNamespace"`
 }
 
 type Installer struct {
 	cfg *Configuration
 
 	opts   InstallOptions
-	reg    *repo.Registry
+	reg    repo.IRegistry
 	result *release.Release
 }
 
@@ -74,7 +73,7 @@ func (x *Installer) WithOptions(opts InstallOptions) *Installer {
 	return x
 }
 
-func (x *Installer) WithRegistry(reg *repo.Registry) *Installer {
+func (x *Installer) WithRegistry(reg repo.IRegistry) *Installer {
 	x.reg = reg
 	return x
 }
@@ -89,7 +88,7 @@ func (x *Installer) Run() (*release.Release, *engine.State, error) {
 		return nil, nil, errors.New("x.reg is not set")
 	}
 
-	chrt, err := x.reg.GetChart(x.opts.ChartURL, x.opts.ChartName, x.opts.Version)
+	chrt, err := x.reg.GetChart(x.opts.ChartSourceFlatRef.ToAPIObject())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -123,7 +122,7 @@ func (x *Installer) Run() (*release.Release, *engine.State, error) {
 	}
 
 	if chrt.Metadata.Deprecated {
-		klog.Warningf("WARNING: chart url=%s,name=%s,version=%s is deprecated", x.opts.ChartURL, x.opts.ChartName, x.opts.Version)
+		klog.Warningf("WARNING: chart %+v is deprecated", x.opts.ChartSourceFlatRef)
 	}
 
 	if req := chrt.Metadata.Dependencies; req != nil {
@@ -140,7 +139,7 @@ func (x *Installer) Run() (*release.Release, *engine.State, error) {
 		return nil, nil, err
 	}
 
-	vals, err := x.opts.Values.MergeValues(chrt.Chart)
+	vals, err := x.opts.Options.MergeValues(chrt.Chart)
 	if err != nil {
 		return nil, nil, err
 	}

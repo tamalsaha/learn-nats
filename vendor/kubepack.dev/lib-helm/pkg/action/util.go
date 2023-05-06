@@ -3,11 +3,15 @@ package action
 import (
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 
+	fluxhelm "github.com/fluxcd/helm-controller/api/v2beta1"
+	fluxsrc "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/gobuffalo/flect"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
+	apiextensionsapi "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -15,13 +19,16 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	apiregistrationapi "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	"kmodules.xyz/client-go/discovery"
+	uiapi "kmodules.xyz/resource-metadata/apis/ui/v1alpha1"
 	"kmodules.xyz/resource-metadata/hub/resourceeditors"
-	chartsapi "kubepack.dev/preset/apis/charts/v1alpha1"
-	storeapi "kubepack.dev/preset/apis/store/v1alpha1"
-	appapi "sigs.k8s.io/application/api/app/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	chartsapi "x-helm.dev/apimachinery/apis/charts/v1alpha1"
+	driversapi "x-helm.dev/apimachinery/apis/drivers/v1alpha1"
+	productsapi "x-helm.dev/apimachinery/apis/products/v1alpha1"
+	releasesapi "x-helm.dev/apimachinery/apis/releases/v1alpha1"
 )
 
 func debug(format string, v ...interface{}) {
@@ -56,16 +63,38 @@ func NewUncachedClientForConfig(cfg *rest.Config) (client.Client, error) {
 	}
 
 	scheme := runtime.NewScheme()
+
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		return nil, err
 	}
+	if err := apiextensionsapi.AddToScheme(scheme); err != nil {
+		return nil, err
+	}
+	if err := apiregistrationapi.AddToScheme(scheme); err != nil {
+		return nil, err
+	}
+	// x-helm.dev
 	if err := chartsapi.AddToScheme(scheme); err != nil {
 		return nil, err
 	}
-	if err := storeapi.AddToScheme(scheme); err != nil {
+	if err := driversapi.AddToScheme(scheme); err != nil {
 		return nil, err
 	}
-	if err := appapi.AddToScheme(scheme); err != nil {
+	if err := productsapi.AddToScheme(scheme); err != nil {
+		return nil, err
+	}
+	if err := releasesapi.AddToScheme(scheme); err != nil {
+		return nil, err
+	}
+	// resource-metadata
+	if err := uiapi.AddToScheme(scheme); err != nil {
+		return nil, err
+	}
+	// FluxCD
+	if err := fluxsrc.AddToScheme(scheme); err != nil {
+		return nil, err
+	}
+	if err := fluxhelm.AddToScheme(scheme); err != nil {
 		return nil, err
 	}
 	return client.New(cfg, client.Options{
@@ -84,7 +113,7 @@ func RefillMetadata(kc client.Client, ref, actual map[string]interface{}, gvr me
 	if err != nil {
 		return err
 	} else if !ok {
-		return fmt.Errorf(".metadata.resource not found in ref values")
+		return fmt.Errorf(".metadata.resource not found in chart values")
 	}
 
 	actual["metadata"] = map[string]interface{}{
@@ -192,4 +221,16 @@ func updateLabels(rlsName string, obj map[string]interface{}, fields ...string) 
 		labels[key] = rlsName
 	}
 	return unstructured.SetNestedStringMap(obj, labels, fields...)
+}
+
+func ExtractResourceKeys(vals map[string]interface{}) []string {
+	if resources, ok, err := unstructured.NestedMap(vals, "resources"); err == nil && ok {
+		resourceKeys := make([]string, 0, len(resources))
+		for k := range resources {
+			resourceKeys = append(resourceKeys, k)
+		}
+		sort.Strings(resourceKeys)
+		return resourceKeys
+	}
+	return nil
 }

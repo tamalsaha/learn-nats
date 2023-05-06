@@ -20,8 +20,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"kubepack.dev/kubepack/apis"
-	"kubepack.dev/kubepack/apis/kubepack/v1alpha1"
 	"kubepack.dev/lib-helm/pkg/action"
 	"kubepack.dev/lib-helm/pkg/repo"
 	"kubepack.dev/lib-helm/pkg/values"
@@ -35,25 +33,26 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"sigs.k8s.io/application/client/clientset/versioned"
+	"x-helm.dev/apimachinery/apis"
+	releasesapi "x-helm.dev/apimachinery/apis/releases/v1alpha1"
 )
 
-func CreateOrder(reg *repo.Registry, bv v1alpha1.BundleView) (*v1alpha1.Order, error) {
+func CreateOrder(reg repo.IRegistry, bv releasesapi.BundleView) (*releasesapi.Order, error) {
 	selection, err := toPackageSelection(reg, &bv.BundleOptionView, bv.LicenseKey)
 	if err != nil {
 		return nil, err
 	}
-	out := v1alpha1.Order{
+	out := releasesapi.Order{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: v1alpha1.SchemeGroupVersion.String(),
-			Kind:       v1alpha1.ResourceKindOrder,
+			APIVersion: releasesapi.GroupVersion.String(),
+			Kind:       releasesapi.ResourceKindOrder,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              bv.Name,
 			UID:               types.UID(uuid.New().String()),
 			CreationTimestamp: metav1.NewTime(time.Now()),
 		},
-		Spec: v1alpha1.OrderSpec{
+		Spec: releasesapi.OrderSpec{
 			Packages: selection,
 		},
 	}
@@ -68,13 +67,13 @@ func CreateOrder(reg *repo.Registry, bv v1alpha1.BundleView) (*v1alpha1.Order, e
 // xref: helm.sh/helm/v3/pkg/action/install.go
 const releaseNameMaxLen = 53
 
-func toPackageSelection(reg *repo.Registry, in *v1alpha1.BundleOptionView, licenseKey string) ([]v1alpha1.PackageSelection, error) {
-	var out []v1alpha1.PackageSelection
+func toPackageSelection(reg repo.IRegistry, in *releasesapi.BundleOptionView, licenseKey string) ([]releasesapi.PackageSelection, error) {
+	var out []releasesapi.PackageSelection
 
-	_, bundle, err := GetBundle(reg, &v1alpha1.BundleOption{
-		BundleRef: v1alpha1.BundleRef{
-			URL:  in.URL,
-			Name: in.Name,
+	_, bundle, err := GetBundle(reg, &releasesapi.BundleOption{
+		BundleRef: releasesapi.BundleRef{
+			Name:      in.Name,
+			SourceRef: in.SourceRef,
 		},
 		Version: in.Version,
 	})
@@ -118,8 +117,8 @@ func toPackageSelection(reg *repo.Registry, in *v1alpha1.BundleOptionView, licen
 						v.ValuesPatch = &runtime.RawExtension{Raw: data}
 					}
 
-					selection := v1alpha1.PackageSelection{
-						Chart: &v1alpha1.ChartSelection{
+					selection := releasesapi.PackageSelection{
+						Chart: &releasesapi.ChartSelection{
 							ChartRef:    pkg.Chart.ChartRef,
 							Version:     v.Version,
 							ReleaseName: releaseName,
@@ -128,10 +127,10 @@ func toPackageSelection(reg *repo.Registry, in *v1alpha1.BundleOptionView, licen
 							ValuesPatch: v.ValuesPatch,
 							Resources:   crds,
 							WaitFors:    waitFors,
-							Bundle: &v1alpha1.ChartRepoRef{
-								Name:    in.Name,
-								URL:     in.URL,
-								Version: in.Version,
+							Bundle: &releasesapi.ChartSourceRef{
+								Name:      in.Name,
+								Version:   in.Version,
+								SourceRef: in.SourceRef,
 							},
 						},
 					}
@@ -152,10 +151,10 @@ func toPackageSelection(reg *repo.Registry, in *v1alpha1.BundleOptionView, licen
 	return out, nil
 }
 
-func FindChartData(bundle *v1alpha1.Bundle, chrtRef v1alpha1.ChartRef, chrtVersion string) (*v1alpha1.ResourceDefinitions, []v1alpha1.WaitFlags, string) {
+func FindChartData(bundle *releasesapi.Bundle, chrtRef releasesapi.ChartRef, chrtVersion string) (*releasesapi.ResourceDefinitions, []releasesapi.WaitFlags, string) {
 	for _, pkg := range bundle.Spec.Packages {
 		if pkg.Chart != nil &&
-			pkg.Chart.URL == chrtRef.URL &&
+			pkg.Chart.SourceRef == chrtRef.SourceRef &&
 			pkg.Chart.Name == chrtRef.Name {
 
 			for _, v := range pkg.Chart.Versions {
@@ -168,7 +167,7 @@ func FindChartData(bundle *v1alpha1.Bundle, chrtRef v1alpha1.ChartRef, chrtVersi
 	return nil, nil, ""
 }
 
-func InstallOrder(getter genericclioptions.RESTClientGetter, reg *repo.Registry, order v1alpha1.Order, opts ...ScriptOption) error {
+func InstallOrder(getter genericclioptions.RESTClientGetter, reg repo.IRegistry, order releasesapi.Order, opts ...ScriptOption) error {
 	config, err := getter.ToRESTConfig()
 	if err != nil {
 		return err
@@ -196,8 +195,8 @@ func InstallOrder(getter genericclioptions.RESTClientGetter, reg *repo.Registry,
 		opt.Apply(&scriptOptions)
 	}
 
-	if !scriptOptions.DisableApplicationCRD {
-		f1 := &ApplicationCRDRegistrar{
+	if !scriptOptions.DisableAppReleaseCRD {
+		f1 := &AppReleaseCRDRegistrar{
 			Config: config,
 		}
 		err = f1.Do()
@@ -218,10 +217,15 @@ func InstallOrder(getter genericclioptions.RESTClientGetter, reg *repo.Registry,
 		f3.
 			WithRegistry(reg).
 			WithOptions(action.InstallOptions{
-				ChartURL:  pkg.Chart.ChartRef.URL,
-				ChartName: pkg.Chart.ChartRef.Name,
-				Version:   pkg.Chart.Version,
-				Values: values.Options{
+				ChartSourceFlatRef: releasesapi.ChartSourceFlatRef{
+					Name:            pkg.Chart.Name,
+					Version:         pkg.Chart.Version,
+					SourceAPIGroup:  pkg.Chart.ChartRef.SourceRef.APIGroup,
+					SourceKind:      pkg.Chart.ChartRef.SourceRef.Kind,
+					SourceNamespace: pkg.Chart.ChartRef.SourceRef.Namespace,
+					SourceName:      pkg.Chart.ChartRef.SourceRef.Name,
+				},
+				Options: values.Options{
 					ValuesFile:  pkg.Chart.ValuesFile,
 					ValuesPatch: pkg.Chart.ValuesPatch,
 				},
@@ -255,7 +259,7 @@ func InstallOrder(getter genericclioptions.RESTClientGetter, reg *repo.Registry,
 			}
 		}
 
-		if !scriptOptions.DisableApplicationCRD {
+		if !scriptOptions.DisableAppReleaseCRD {
 			f6 := &ApplicationGenerator{
 				Registry:    reg,
 				Chart:       *pkg.Chart,
@@ -266,9 +270,13 @@ func InstallOrder(getter genericclioptions.RESTClientGetter, reg *repo.Registry,
 				return err
 			}
 
+			kc, err := action.NewUncachedClientForConfig(config)
+			if err != nil {
+				return err
+			}
 			f7 := &ApplicationCreator{
 				App:    f6.Result(),
-				Client: versioned.NewForConfigOrDie(config),
+				Client: kc,
 			}
 			err = f7.Do()
 			if err != nil {
@@ -279,7 +287,7 @@ func InstallOrder(getter genericclioptions.RESTClientGetter, reg *repo.Registry,
 	return nil
 }
 
-func UninstallOrder(getter genericclioptions.RESTClientGetter, order v1alpha1.Order) error {
+func UninstallOrder(getter genericclioptions.RESTClientGetter, order releasesapi.Order) error {
 	for _, pkg := range order.Spec.Packages {
 		if pkg.Chart == nil {
 			continue

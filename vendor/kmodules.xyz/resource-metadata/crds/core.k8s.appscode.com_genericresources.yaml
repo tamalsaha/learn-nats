@@ -54,10 +54,6 @@ spec:
                     type: string
                 required:
                 - group
-                - kind
-                - name
-                - scope
-                - version
                 type: object
               appResource:
                 description: ResourceRequirements describes the compute resource requirements.
@@ -197,6 +193,7 @@ spec:
             type: object
           status:
             type: object
+            x-kubernetes-preserve-unknown-fields: true
         type: object
     served: true
     storage: true

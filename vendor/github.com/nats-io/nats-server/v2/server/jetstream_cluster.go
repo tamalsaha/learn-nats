@@ -30,7 +30,6 @@ import (
 	"time"
 
 	"github.com/klauspost/compress/s2"
-	"github.com/minio/highwayhash"
 	"github.com/nats-io/nuid"
 )
 
@@ -408,47 +407,6 @@ func (cc *jetStreamCluster) isStreamCurrent(account, stream string) bool {
 	return false
 }
 
-// isStreamHealthy will determine if the stream is up to date or very close.
-// For R1 it will make sure the stream is present on this server.
-// Read lock should be held.
-func (cc *jetStreamCluster) isStreamHealthy(account, stream string) bool {
-	if cc == nil {
-		// Non-clustered mode
-		return true
-	}
-	as := cc.streams[account]
-	if as == nil {
-		return false
-	}
-	sa := as[stream]
-	if sa == nil {
-		return false
-	}
-	rg := sa.Group
-	if rg == nil {
-		return false
-	}
-
-	if rg.node == nil || rg.node.Healthy() {
-		// Check if we are processing a snapshot and are catching up.
-		acc, err := cc.s.LookupAccount(account)
-		if err != nil {
-			return false
-		}
-		mset, err := acc.lookupStream(stream)
-		if err != nil {
-			return false
-		}
-		if mset.isCatchingUp() {
-			return false
-		}
-		// Success.
-		return true
-	}
-
-	return false
-}
-
 // isConsumerCurrent will determine if the consumer is up to date.
 // For R1 it will make sure the consunmer is present on this server.
 // Read lock should be held.
@@ -739,7 +697,7 @@ func (js *jetStream) isLeaderless() bool {
 
 // Will respond iff we are a member and we know we have no leader.
 func (js *jetStream) isGroupLeaderless(rg *raftGroup) bool {
-	if rg == nil || js == nil {
+	if rg == nil {
 		return false
 	}
 	js.mu.RLock()
@@ -991,10 +949,6 @@ func (js *jetStream) monitorCluster() {
 		beenLeader   bool
 	)
 
-	// Highwayhash key for generating hashes.
-	key := make([]byte, 32)
-	rand.Read(key)
-
 	// Set to true to start.
 	js.setMetaRecovering()
 
@@ -1004,10 +958,10 @@ func (js *jetStream) monitorCluster() {
 		if js.isMetaRecovering() {
 			return
 		}
-		snap := js.metaSnapshot()
-		if hash := highwayhash.Sum(snap, key); !bytes.Equal(hash[:], lastSnap) {
+		if snap := js.metaSnapshot(); !bytes.Equal(lastSnap, snap) {
 			if err := n.InstallSnapshot(snap); err == nil {
-				lastSnap, lastSnapTime = hash[:], time.Now()
+				lastSnap = snap
+				lastSnapTime = time.Now()
 			}
 		}
 	}
@@ -1061,11 +1015,11 @@ func (js *jetStream) monitorCluster() {
 				// FIXME(dlc) - Deal with errors.
 				if didSnap, didRemoval, err := js.applyMetaEntries(ce.Entries, ru); err == nil {
 					_, nb := n.Applied(ce.Index)
-					if js.hasPeerEntries(ce.Entries) || didSnap || didRemoval {
+					if js.hasPeerEntries(ce.Entries) || didSnap || (didRemoval && time.Since(lastSnapTime) > 2*time.Second) {
 						// Since we received one make sure we have our own since we do not store
 						// our meta state outside of raft.
 						doSnapshot()
-					} else if lls := len(lastSnap); nb > uint64(lls*8) && lls > 0 && time.Since(lastSnapTime) > 5*time.Second {
+					} else if lls := len(lastSnap); nb > uint64(lls*8) && lls > 0 {
 						doSnapshot()
 					}
 				}
@@ -1305,16 +1259,6 @@ func (js *jetStream) applyMetaSnapshot(buf []byte) error {
 			js.processConsumerAssignment(ca)
 		}
 	}
-
-	// Perform updates on those in saChk. These were existing so make
-	// sure to process any changes.
-	for _, sa := range saChk {
-		if isRecovering {
-			js.setStreamAssignmentRecovering(sa)
-		}
-		js.processUpdateStreamAssignment(sa)
-	}
-
 	// Now do the deltas for existing stream's consumers.
 	for _, ca := range caDel {
 		if isRecovering {
@@ -1849,7 +1793,6 @@ func (js *jetStream) monitorStream(mset *stream, sa *streamAssignment, sendSnaps
 		compactInterval = 2 * time.Minute
 		compactSizeMin  = 8 * 1024 * 1024
 		compactNumMin   = 65536
-		minSnapDelta    = 5 * time.Second
 	)
 
 	// Spread these out for large numbers on server restart.
@@ -1869,24 +1812,16 @@ func (js *jetStream) monitorStream(mset *stream, sa *streamAssignment, sendSnaps
 	}
 	accName := acc.GetName()
 
-	// Hash of the last snapshot (fixed size in memory).
 	var lastSnap []byte
-	var lastSnapTime time.Time
-
-	// Highwayhash key for generating hashes.
-	key := make([]byte, 32)
-	rand.Read(key)
 
 	// Should only to be called from leader.
 	doSnapshot := func() {
-		if mset == nil || isRestore || time.Since(lastSnapTime) < minSnapDelta {
+		if mset == nil || isRestore {
 			return
 		}
-
-		snap := mset.stateSnapshot()
-		if hash := highwayhash.Sum(snap, key); !bytes.Equal(hash[:], lastSnap) {
+		if snap := mset.stateSnapshot(); !bytes.Equal(lastSnap, snap) {
 			if err := n.InstallSnapshot(snap); err == nil {
-				lastSnap, lastSnapTime = hash[:], time.Now()
+				lastSnap = snap
 			}
 		}
 	}
@@ -1951,7 +1886,6 @@ func (js *jetStream) monitorStream(mset *stream, sa *streamAssignment, sendSnaps
 		case <-qch:
 			return
 		case <-aq.ch:
-			var ne, nb uint64
 			ces := aq.pop()
 			for _, cei := range ces {
 				// No special processing needed for when we are caught up on restart.
@@ -1966,8 +1900,11 @@ func (js *jetStream) monitorStream(mset *stream, sa *streamAssignment, sendSnaps
 				ce := cei.(*CommittedEntry)
 				// Apply our entries.
 				if err := js.applyStreamEntries(mset, ce, isRecovering); err == nil {
-					// Update our applied.
-					ne, nb = n.Applied(ce.Index)
+					ne, nb := n.Applied(ce.Index)
+					// If we have at least min entries to compact, go ahead and snapshot/compact.
+					if ne >= compactNumMin || nb > compactSizeMin {
+						doSnapshot()
+					}
 				} else {
 					s.Warnf("Error applying entries to '%s > %s': %v", accName, sa.Config.Name, err)
 					if isClusterResetErr(err) {
@@ -1987,13 +1924,6 @@ func (js *jetStream) monitorStream(mset *stream, sa *streamAssignment, sendSnaps
 				}
 			}
 			aq.recycle(&ces)
-
-			// Check about snapshotting
-			// If we have at least min entries to compact, go ahead and try to snapshot/compact.
-			if ne >= compactNumMin || nb > compactSizeMin {
-				doSnapshot()
-			}
-
 		case isLeader = <-lch:
 			if isLeader {
 				if sendSnapshot && mset != nil && n != nil {
@@ -2550,7 +2480,6 @@ func (js *jetStream) applyStreamEntries(mset *stream, ce *CommittedEntry, isReco
 				if err := json.Unmarshal(e.Data, &snap); err != nil {
 					return err
 				}
-
 				mset.mu.Lock()
 				mset.clfs = snap.Failed
 				mset.mu.Unlock()
@@ -3982,7 +3911,7 @@ func (js *jetStream) monitorConsumer(o *consumer, ca *consumerAssignment) {
 		compactInterval = 2 * time.Minute
 		compactSizeMin  = 64 * 1024 // What is stored here is always small for consumers.
 		compactNumMin   = 1024
-		minSnapDelta    = 5 * time.Second
+		minSnapDelta    = 2 * time.Second
 	)
 
 	// Spread these out for large numbers on server restart.
@@ -3990,11 +3919,6 @@ func (js *jetStream) monitorConsumer(o *consumer, ca *consumerAssignment) {
 	t := time.NewTicker(compactInterval + rci)
 	defer t.Stop()
 
-	// Highwayhash key for generating hashes.
-	key := make([]byte, 32)
-	rand.Read(key)
-
-	// Hash of the last snapshot (fixed size in memory).
 	var lastSnap []byte
 	var lastSnapTime time.Time
 
@@ -4005,20 +3929,18 @@ func (js *jetStream) monitorConsumer(o *consumer, ca *consumerAssignment) {
 		}
 
 		// Check several things to see if we need a snapshot.
-		if !force || !n.NeedSnapshot() {
+		needSnap := force || n.NeedSnapshot()
+		if !needSnap {
 			// Check if we should compact etc. based on size of log.
-			if ne, nb := n.Size(); ne < compactNumMin && nb < compactSizeMin {
-				return
-			}
+			ne, nb := n.Size()
+			needSnap = nb > 0 && ne >= compactNumMin || nb > compactSizeMin
 		}
 
-		if snap, err := o.store.EncodedState(); err == nil {
-			if hash := highwayhash.Sum(snap, key); !bytes.Equal(hash[:], lastSnap) {
-				if err := n.InstallSnapshot(snap); err == nil {
-					lastSnap, lastSnapTime = hash[:], time.Now()
-				} else {
-					s.Warnf("Failed to install snapshot for '%s > %s > %s' [%s]: %v", o.acc.Name, ca.Stream, ca.Name, n.Group(), err)
-				}
+		if snap, err := o.store.EncodedState(); err == nil && (!bytes.Equal(lastSnap, snap) || needSnap) {
+			if err := n.InstallSnapshot(snap); err == nil {
+				lastSnap, lastSnapTime = snap, time.Now()
+			} else {
+				s.Warnf("Failed to install snapshot for '%s > %s > %s' [%s]: %v", o.acc.Name, ca.Stream, ca.Name, n.Group(), err)
 			}
 		}
 	}
@@ -5668,6 +5590,7 @@ func (s *Server) jsClusteredStreamPurgeRequest(
 	rmsg []byte,
 	preq *JSApiStreamPurgeRequest,
 ) {
+
 	js, cc := s.getJetStreamCluster()
 	if js == nil || cc == nil {
 		return
@@ -6207,36 +6130,14 @@ func decodeStreamAssignment(buf []byte) (*streamAssignment, error) {
 
 // createGroupForConsumer will create a new group from same peer set as the stream.
 func (cc *jetStreamCluster) createGroupForConsumer(cfg *ConsumerConfig, sa *streamAssignment) *raftGroup {
-	if len(sa.Group.Peers) == 0 || cfg.Replicas > len(sa.Group.Peers) {
-		return nil
-	}
-
 	peers := copyStrings(sa.Group.Peers)
-	var _ss [5]string
-	active := _ss[:0]
-
-	// Calculate all active peers.
-	for _, peer := range peers {
-		if sir, ok := cc.s.nodeToInfo.Load(peer); ok && sir != nil {
-			if !sir.(nodeInfo).offline {
-				active = append(active, peer)
-			}
-		}
-	}
-	if quorum := cfg.Replicas/2 + 1; quorum > len(active) {
-		// Not enough active to satisfy the request.
+	if len(peers) == 0 {
 		return nil
 	}
-
-	// If we want less then our parent stream, select from active.
-	if cfg.Replicas > 0 && cfg.Replicas < len(peers) {
-		// Pedantic in case stream is say R5 and consumer is R3 and 3 or more offline, etc.
-		if len(active) < cfg.Replicas {
-			return nil
-		}
-		// First shuffle the active peers and then select to account for replica = 1.
-		rand.Shuffle(len(active), func(i, j int) { active[i], active[j] = active[j], active[i] })
-		peers = active[:cfg.Replicas]
+	if cfg.Replicas > 0 && cfg.Replicas != len(peers) {
+		// First shuffle the peers and then select to account for replica = 1.
+		rand.Shuffle(len(peers), func(i, j int) { peers[i], peers[j] = peers[j], peers[i] })
+		peers = peers[:cfg.Replicas]
 	}
 	storage := sa.Config.Storage
 	if cfg.MemoryStorage {
@@ -6930,8 +6831,7 @@ func (mset *stream) calculateSyncRequest(state *StreamState, snap *streamSnapsho
 // processSnapshotDeletes will update our current store based on the snapshot
 // but only processing deletes and new FirstSeq / purges.
 func (mset *stream) processSnapshotDeletes(snap *streamSnapshot) {
-	var state StreamState
-	mset.store.FastState(&state)
+	state := mset.state()
 
 	// Always adjust if FirstSeq has moved beyond our state.
 	if snap.FirstSeq > state.FirstSeq {
@@ -6941,7 +6841,7 @@ func (mset *stream) processSnapshotDeletes(snap *streamSnapshot) {
 	}
 	// Range the deleted and delete if applicable.
 	for _, dseq := range snap.Deleted {
-		if dseq > state.FirstSeq && dseq <= state.LastSeq {
+		if dseq <= state.LastSeq {
 			mset.store.RemoveMsg(dseq)
 		}
 	}

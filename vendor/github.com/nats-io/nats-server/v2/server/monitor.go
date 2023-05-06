@@ -40,13 +40,9 @@ import (
 var numCores int
 var maxProcs int
 
-func SnapshotMonitorInfo() {
+func init() {
 	numCores = runtime.NumCPU()
 	maxProcs = runtime.GOMAXPROCS(0)
-}
-
-func init() {
-	SnapshotMonitorInfo()
 }
 
 // Connz represents detailed information on current client connections.
@@ -3105,7 +3101,7 @@ func (s *Server) healthz(opts *HealthzOptions) *HealthStatus {
 		for stream, sa := range asa {
 			if sa.Group.isMember(ourID) {
 				// Make sure we can look up
-				if !cc.isStreamHealthy(acc, stream) {
+				if !cc.isStreamCurrent(acc, stream) {
 					health.Status = na
 					health.Error = fmt.Sprintf("JetStream stream '%s > %s' is not current", acc, stream)
 					return health

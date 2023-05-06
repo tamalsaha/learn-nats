@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-logr/logr"
 	"github.com/unrolled/render"
 )
 
@@ -23,7 +24,7 @@ type ResponseWriter interface {
 	JSONP(status int, callback string, v interface{})
 	Text(status int, v string)
 	XML(status int, v interface{})
-	Error(status int, contents ...string)
+	Error(status int, contents ...interface{})
 
 	// extended ResponseWriter methods
 	Written() bool
@@ -48,15 +49,17 @@ type response struct {
 	http.ResponseWriter
 	req Request
 	r   *render.Render
+	log logr.Logger
 }
 
 var _ ResponseWriter = &response{}
 
-func NewResponseWriter(w http.ResponseWriter, req *http.Request, r *render.Render) ResponseWriter {
+func NewResponseWriter(w http.ResponseWriter, req *http.Request, r *render.Render, sink logr.LogSink) ResponseWriter {
 	return &response{
 		ResponseWriter: w,
 		req:            &request{req: req},
 		r:              r,
+		log:            logr.New(sink),
 	}
 }
 
@@ -102,13 +105,17 @@ func (w *response) JSON(status int, v interface{}) {
 
 func (w *response) JSONP(status int, callback string, v interface{}) {
 	if err := w.r.JSONP(w, status, callback, v); err != nil {
-		http.Error(w, fmt.Sprintf("Render failed, reason: %v", err), http.StatusInternalServerError)
+		if log := middleware.GetLogEntry(w.R().Request()); log != nil {
+			log.Panic(err.Error(), nil)
+		}
 	}
 }
 
 func (w *response) Text(status int, v string) {
 	if err := w.r.Text(w, status, v); err != nil {
-		http.Error(w, fmt.Sprintf("Render failed, reason: %v", err), http.StatusInternalServerError)
+		if log := middleware.GetLogEntry(w.R().Request()); log != nil {
+			log.Panic(err.Error(), nil)
+		}
 	}
 }
 
@@ -120,11 +127,33 @@ func (w *response) XML(status int, v interface{}) {
 	}
 }
 
-func (w *response) Error(status int, contents ...string) {
-	var v = http.StatusText(status)
-	if len(contents) > 0 {
-		v = contents[0]
+// Error if length of contents is more than 1, then the
+// first content will be considered as title and the
+// second content will be considered as the error
+func (w *response) Error(status int, contents ...interface{}) {
+	v := http.StatusText(status)
+
+	var title string
+	var obj interface{}
+
+	if len(contents) > 1 {
+		title = fmt.Sprintf("%v", contents[0])
+		obj = contents[1]
+	} else if len(contents) > 0 {
+		obj = contents[0]
 	}
+
+	if err, ok := obj.(error); ok {
+		v = err.Error()
+	} else {
+		v = fmt.Sprintf("%v", obj)
+	}
+
+	if len(title) > 0 && w.log.GetSink() != nil {
+		// log the error with the title
+		w.log.Error(fmt.Errorf(v), title)
+	}
+
 	http.Error(w, v, status)
 }
 
@@ -133,7 +162,7 @@ func (w *response) Written() bool {
 	if ww, ok := w.ResponseWriter.(middleware.WrapResponseWriter); ok {
 		return ww.Status() > 0
 	}
-	panic("unsupported method, r.Use(middleware.Logger) to implement")
+	panic("chi: unsupported method, r.Use(middleware.Logger) to implement")
 }
 
 // Status returns the HTTP status of the request, or 0 if one has not
@@ -142,7 +171,7 @@ func (w *response) Status() int {
 	if ww, ok := w.ResponseWriter.(middleware.WrapResponseWriter); ok {
 		return ww.Status()
 	}
-	panic("unsupported method, r.Use(middleware.Logger) to implement")
+	panic("chi: unsupported method, r.Use(middleware.Logger) to implement")
 }
 
 // BytesWritten returns the total number of bytes sent to the client.
@@ -150,5 +179,5 @@ func (w *response) BytesWritten() int {
 	if ww, ok := w.ResponseWriter.(middleware.WrapResponseWriter); ok {
 		return ww.BytesWritten()
 	}
-	panic("unsupported method, r.Use(middleware.Logger) to implement")
+	panic("chi: unsupported method, r.Use(middleware.Logger) to implement")
 }

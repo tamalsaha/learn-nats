@@ -294,7 +294,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// deleting the release because the manifest will be pointing at that
 	// resource
 	if !i.ClientOnly && !isUpgrade && len(resources) > 0 {
-		toBeAdopted, err = existingResourceConflict(resources, rel.Name, rel.Namespace)
+		toBeAdopted, err = existingResourceConflict(resources, rel.Name, rel.Namespace, isEditorChart(rel.Chart))
 		if err != nil {
 			return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with install")
 		}
@@ -716,6 +716,10 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		RegistryClient:   c.registryClient,
 	}
 
+	if registry.IsOCI(name) {
+		dl.Options = append(dl.Options, getter.WithRegistryClient(c.registryClient))
+	}
+
 	if c.Verify {
 		dl.Verify = downloader.VerifyAlways
 	}
@@ -755,20 +759,13 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	}
 
 	filename, _, err := dl.DownloadTo(name, version, settings.RepositoryCache)
-	if err == nil {
-		lname, err := filepath.Abs(filename)
-		if err != nil {
-			return filename, err
-		}
-		return lname, nil
-	} else if settings.Debug {
+	if err != nil {
+		return "", err
+	}
+
+	lname, err := filepath.Abs(filename)
+	if err != nil {
 		return filename, err
 	}
-
-	atVersion := ""
-	if version != "" {
-		atVersion = fmt.Sprintf(" at version %q", version)
-	}
-
-	return filename, errors.Errorf("failed to download %q%s", name, atVersion)
+	return lname, nil
 }

@@ -54,10 +54,6 @@ spec:
                     type: string
                 required:
                 - group
-                - kind
-                - name
-                - scope
-                - version
                 type: object
               cluster:
                 properties:
@@ -127,16 +123,51 @@ spec:
                             type: string
                         required:
                         - group
-                        - kind
-                        - name
-                        - scope
-                        - version
                         type: object
                       usage:
                         type: string
                     required:
                     - usage
                     type: object
+                  exec:
+                    items:
+                      properties:
+                        alias:
+                          type: string
+                        command:
+                          items:
+                            type: string
+                          type: array
+                        container:
+                          type: string
+                        help:
+                          type: string
+                        kubectlCommand:
+                          type: string
+                        ref:
+                          description: ObjectReference contains enough information
+                            to let you inspect or modify the referred object.
+                          properties:
+                            name:
+                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                              type: string
+                            namespace:
+                              description: 'Namespace of the referent. More info:
+                                https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/'
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        resource:
+                          type: string
+                      required:
+                      - alias
+                      - command
+                      - container
+                      - ref
+                      - resource
+                      type: object
+                    type: array
                   exposed:
                     properties:
                       refs:
@@ -177,10 +208,6 @@ spec:
                             type: string
                         required:
                         - group
-                        - kind
-                        - name
-                        - scope
-                        - version
                         type: object
                       usage:
                         type: string
@@ -227,10 +254,6 @@ spec:
                             type: string
                         required:
                         - group
-                        - kind
-                        - name
-                        - scope
-                        - version
                         type: object
                       usage:
                         type: string
@@ -277,10 +300,6 @@ spec:
                             type: string
                         required:
                         - group
-                        - kind
-                        - name
-                        - scope
-                        - version
                         type: object
                       usage:
                         type: string
@@ -305,6 +324,7 @@ spec:
             type: object
           status:
             type: object
+            x-kubernetes-preserve-unknown-fields: true
         type: object
     served: true
     storage: true

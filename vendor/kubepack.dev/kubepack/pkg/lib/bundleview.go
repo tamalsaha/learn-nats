@@ -17,28 +17,28 @@ limitations under the License.
 package lib
 
 import (
-	"kubepack.dev/kubepack/apis/kubepack/v1alpha1"
 	"kubepack.dev/lib-helm/pkg/repo"
 
 	"github.com/gobuffalo/flect"
 	kerr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	releasesapi "x-helm.dev/apimachinery/apis/releases/v1alpha1"
 )
 
-func CreateBundleViewForBundle(reg *repo.Registry, ref *v1alpha1.ChartRepoRef) (*v1alpha1.BundleView, error) {
-	view, err := toBundleOptionView(reg, &v1alpha1.BundleOption{
-		BundleRef: v1alpha1.BundleRef{
-			URL:  ref.URL,
-			Name: ref.Name,
+func CreateBundleViewForBundle(reg repo.IRegistry, ref *releasesapi.ChartSourceRef) (*releasesapi.BundleView, error) {
+	view, err := toBundleOptionView(reg, &releasesapi.BundleOption{
+		BundleRef: releasesapi.BundleRef{
+			Name:      ref.Name,
+			SourceRef: ref.SourceRef,
 		},
 		Version: ref.Version,
 	}, 0)
 	if err != nil {
 		return nil, err
 	}
-	bv := v1alpha1.BundleView{
+	bv := releasesapi.BundleView{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: v1alpha1.SchemeGroupVersion.String(),
+			APIVersion: releasesapi.GroupVersion.String(),
 			Kind:       "BundleView",
 		},
 		BundleOptionView: *view,
@@ -46,17 +46,19 @@ func CreateBundleViewForBundle(reg *repo.Registry, ref *v1alpha1.ChartRepoRef) (
 	return &bv, nil
 }
 
-func toBundleOptionView(reg *repo.Registry, in *v1alpha1.BundleOption, level int) (*v1alpha1.BundleOptionView, error) {
+func toBundleOptionView(reg repo.IRegistry, in *releasesapi.BundleOption, level int) (*releasesapi.BundleOptionView, error) {
 	chrt, bundle, err := GetBundle(reg, in)
 	if err != nil {
 		return nil, err
 	}
 
-	bv := v1alpha1.BundleOptionView{
-		PackageMeta: v1alpha1.PackageMeta{
-			Name:              chrt.Name(),
-			URL:               in.URL,
-			Version:           chrt.Metadata.Version,
+	bv := releasesapi.BundleOptionView{
+		PackageMeta: releasesapi.PackageMeta{
+			ChartSourceRef: releasesapi.ChartSourceRef{
+				Name:      chrt.Name(),
+				Version:   chrt.Metadata.Version,
+				SourceRef: in.SourceRef,
+			},
 			PackageDescriptor: GetPackageDescriptor(chrt),
 		},
 		DisplayName: XorY(bundle.Spec.DisplayName, flect.Titleize(flect.Humanize(bundle.Name))),
@@ -74,7 +76,11 @@ func toBundleOptionView(reg *repo.Registry, in *v1alpha1.BundleOption, level int
 			if chartVersion == "" {
 				chartVersion = pkg.Chart.Versions[0].Version
 			}
-			pkgChart, err := reg.GetChart(pkg.Chart.URL, pkg.Chart.Name, chartVersion)
+			pkgChart, err := reg.GetChart(releasesapi.ChartSourceRef{
+				Name:      pkg.Chart.Name,
+				Version:   chartVersion,
+				SourceRef: pkg.Chart.SourceRef,
+			})
 			if err != nil {
 				return nil, err
 			}
@@ -85,11 +91,11 @@ func toBundleOptionView(reg *repo.Registry, in *v1alpha1.BundleOption, level int
 				required = false
 			}
 
-			card := v1alpha1.PackageCard{
-				Chart: &v1alpha1.ChartCard{
-					ChartRef: v1alpha1.ChartRef{
-						Name: pkg.Chart.Name,
-						URL:  pkg.Chart.URL,
+			card := releasesapi.PackageCard{
+				Chart: &releasesapi.ChartCard{
+					ChartRef: releasesapi.ChartRef{
+						Name:      pkg.Chart.Name,
+						SourceRef: pkg.Chart.SourceRef,
 					},
 					PackageDescriptor: GetPackageDescriptor(pkgChart.Chart),
 					Features:          pkg.Chart.Features,
@@ -111,11 +117,11 @@ func toBundleOptionView(reg *repo.Registry, in *v1alpha1.BundleOption, level int
 			if err != nil {
 				return nil, err
 			}
-			bv.Packages = append(bv.Packages, v1alpha1.PackageCard{
+			bv.Packages = append(bv.Packages, releasesapi.PackageCard{
 				Bundle: view,
 			})
 		} else if pkg.OneOf != nil {
-			bovs := make([]*v1alpha1.BundleOptionView, 0, len(pkg.OneOf.Bundles))
+			bovs := make([]*releasesapi.BundleOptionView, 0, len(pkg.OneOf.Bundles))
 			for _, bo := range pkg.OneOf.Bundles {
 				view, err := toBundleOptionView(reg, bo, level+1)
 				if err != nil {
@@ -123,8 +129,8 @@ func toBundleOptionView(reg *repo.Registry, in *v1alpha1.BundleOption, level int
 				}
 				bovs = append(bovs, view)
 			}
-			bv.Packages = append(bv.Packages, v1alpha1.PackageCard{
-				OneOf: &v1alpha1.OneOfBundleOptionView{
+			bv.Packages = append(bv.Packages, releasesapi.PackageCard{
+				OneOf: &releasesapi.OneOfBundleOptionView{
 					Description: pkg.OneOf.Description,
 					Bundles:     bovs,
 				},
@@ -135,44 +141,42 @@ func toBundleOptionView(reg *repo.Registry, in *v1alpha1.BundleOption, level int
 	return &bv, nil
 }
 
-func CreateBundleViewForChart(reg *repo.Registry, ref *v1alpha1.ChartRepoRef) (*v1alpha1.BundleView, error) {
-	pkgChart, err := reg.GetChart(ref.URL, ref.Name, ref.Version)
+func CreateBundleViewForChart(reg repo.IRegistry, ref releasesapi.ChartSourceRef) (*releasesapi.BundleView, error) {
+	pkgChart, err := reg.GetChart(ref)
 	if err != nil {
 		return nil, err
 	}
 
 	_, _, err = getBundle(pkgChart.Chart)
 	if err == nil {
-		return CreateBundleViewForBundle(reg, ref)
+		return CreateBundleViewForBundle(reg, &ref)
 	} else if !kerr.IsNotFound(err) {
 		return nil, err
 	}
 
-	return &v1alpha1.BundleView{
+	return &releasesapi.BundleView{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: v1alpha1.SchemeGroupVersion.String(),
+			APIVersion: releasesapi.GroupVersion.String(),
 			Kind:       "BundleView",
 		},
-		BundleOptionView: v1alpha1.BundleOptionView{
-			PackageMeta: v1alpha1.PackageMeta{
+		BundleOptionView: releasesapi.BundleOptionView{
+			PackageMeta: releasesapi.PackageMeta{
 				PackageDescriptor: GetPackageDescriptor(pkgChart.Chart),
-				URL:               ref.URL,
-				Name:              ref.Name,
-				Version:           ref.Version,
+				ChartSourceRef:    ref,
 			},
 			DisplayName: flect.Titleize(flect.Humanize(ref.Name)),
 			// Features:    nil,
-			Packages: []v1alpha1.PackageCard{
+			Packages: []releasesapi.PackageCard{
 				{
-					Chart: &v1alpha1.ChartCard{
-						ChartRef: v1alpha1.ChartRef{
-							URL:  ref.URL,
-							Name: ref.Name,
+					Chart: &releasesapi.ChartCard{
+						ChartRef: releasesapi.ChartRef{
+							Name:      ref.Name,
+							SourceRef: ref.SourceRef,
 						},
 						PackageDescriptor: GetPackageDescriptor(pkgChart.Chart),
 						Features:          []string{pkgChart.Metadata.Description},
 						Namespace:         "default",
-						Versions: []v1alpha1.VersionOption{
+						Versions: []releasesapi.VersionOption{
 							{
 								Version:  ref.Version,
 								Selected: true,

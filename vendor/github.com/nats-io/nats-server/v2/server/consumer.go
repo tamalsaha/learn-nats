@@ -382,16 +382,6 @@ func checkConsumerCfg(
 	if config.Replicas < 0 {
 		return NewJSReplicasCountCannotBeNegativeError()
 	}
-	// If the stream is interest or workqueue retention make sure the replicas
-	// match that of the stream. This is REQUIRED for now.
-	if cfg.Retention == InterestPolicy || cfg.Retention == WorkQueuePolicy {
-		// Only error here if not recovering.
-		// We handle recovering in a different spot to allow consumer to come up
-		// if previous version allowed it to be created. We do not want it to not come up.
-		if !isRecovering && config.Replicas != 0 && config.Replicas != cfg.Replicas {
-			return NewJSConsumerReplicasShouldMatchStreamError()
-		}
-	}
 
 	// Check if we have a BackOff defined that MaxDeliver is within range etc.
 	if lbo := len(config.BackOff); lbo > 0 && config.MaxDeliver <= lbo {
@@ -1599,18 +1589,6 @@ func (o *consumer) updateConfig(cfg *ConsumerConfig) error {
 		if o.isLeader() && o.dthresh > 0 {
 			o.dtmr = time.AfterFunc(o.dthresh, func() { o.deleteNotActive() })
 		}
-	}
-
-	if o.cfg.FilterSubject != cfg.FilterSubject {
-		if cfg.FilterSubject != _EMPTY_ {
-			o.filterWC = subjectHasWildcard(cfg.FilterSubject)
-		}
-		// Make sure we have correct signaling setup.
-		// Consumer lock can not be held.
-		mset := o.mset
-		o.mu.Unlock()
-		mset.swapSigSubs(o, cfg.FilterSubject)
-		o.mu.Lock()
 	}
 
 	// Record new config for others that do not need special handling.
@@ -4239,7 +4217,7 @@ func (o *consumer) stopWithFlags(dflag, sdflag, doSignal, advisory bool) error {
 			n.Delete()
 		} else {
 			// Try to install snapshot on clean exit
-			if o.store != nil && n.NeedSnapshot() {
+			if o.store != nil {
 				if snap, err := o.store.EncodedState(); err == nil {
 					n.InstallSnapshot(snap)
 				}
@@ -4369,9 +4347,7 @@ func (o *consumer) signalSub() *subscription {
 	if subject == _EMPTY_ {
 		subject = fwcs
 	}
-	sub := &subscription{subject: []byte(subject), icb: o.processStreamSignal}
-	o.sigSub = sub
-	return sub
+	return &subscription{subject: []byte(subject), icb: o.processStreamSignal}
 }
 
 // This is what will be called when our parent stream wants to kick us regarding a new message.

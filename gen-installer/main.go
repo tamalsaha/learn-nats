@@ -13,8 +13,8 @@ import (
 
 	"gomodules.xyz/blobfs/testing"
 	"k8s.io/klog/v2"
-	"kubepack.dev/kubepack/apis/kubepack/v1alpha1"
 	"kubepack.dev/kubepack/pkg/lib"
+	"x-helm.dev/apimachinery/apis/releases/v1alpha1"
 )
 
 var (

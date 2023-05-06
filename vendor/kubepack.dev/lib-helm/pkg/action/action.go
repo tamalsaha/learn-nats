@@ -24,16 +24,10 @@ import (
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/storage"
 	"helm.sh/helm/v3/pkg/storage/driver"
-	crd_cs "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/client-go/dynamic"
-	"kmodules.xyz/client-go/apiextensions"
-	disco_util "kmodules.xyz/client-go/discovery"
-	"kubepack.dev/lib-helm/pkg/application"
 	kubex "kubepack.dev/lib-helm/pkg/kube"
 	driver2 "kubepack.dev/lib-helm/pkg/storage/driver"
-	"sigs.k8s.io/application/api/app/v1beta1"
-	appcs "sigs.k8s.io/application/client/clientset/versioned"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Configuration injects the dependencies that all actions share.
@@ -54,11 +48,13 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 	switch helmDriver {
 	case "secret", "secrets", "", "configmap", "configmaps", "memory", "sql":
 		client := kube.New(getter)
+		client.Namespace = namespace
 		client.Log = log
 		kc = client
 		factory = client.Factory
-	case "storage.x-helm.dev/apps":
+	case "drivers.x-helm.dev/appreleases":
 		client, err := kubex.New(getter, log)
+		client.Namespace = namespace
 		if err != nil {
 			return err
 		}
@@ -68,55 +64,33 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 
 	lazyClient := &lazyClient{
 		namespace: namespace,
-		clientFn:  factory.KubernetesClientSet,
-		appClientFn: func() (*appcs.Clientset, error) {
-			config, err := factory.ToRawKubeConfigLoader().ClientConfig()
+		kcFn:      factory.KubernetesClientSet,
+		kbFn: func() (client.Client, error) {
+			config, err := getter.ToRESTConfig()
 			if err != nil {
 				return nil, err
 			}
-			return appcs.NewForConfig(config)
+			return NewUncachedClientForConfig(config)
 		},
 	}
 
 	var store *storage.Storage
 	switch helmDriver {
-	case "storage.x-helm.dev/apps":
-		config, err := factory.ToRawKubeConfigLoader().ClientConfig()
+	case "drivers.x-helm.dev/appreleases":
+		restcfg, err := getter.ToRESTConfig()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get rest config, reason %v", err)
 		}
 		mapper, err := getter.ToRESTMapper()
 		if err != nil {
 			return err
 		}
-		rsmapper := disco_util.NewResourceMapper(mapper)
-		appcrdRegistered, err := rsmapper.ExistsGVR(v1beta1.GroupVersion.WithResource("applications"))
+		err = driver2.EnsureAppReleaseCRD(restcfg, mapper)
 		if err != nil {
-			return fmt.Errorf("failed to detect if Application CRD is registered, reason %v", err)
+			return err
 		}
-		if !appcrdRegistered {
-			// register Application CRD
-			crds := []*apiextensions.CustomResourceDefinition{
-				application.CustomResourceDefinition(),
-			}
-			restcfg, err := getter.ToRESTConfig()
-			if err != nil {
-				return fmt.Errorf("failed to get rest config, reason %v", err)
-			}
-			crdClient, err := crd_cs.NewForConfig(restcfg)
-			if err != nil {
-				return fmt.Errorf("failed to create crd client, reason %v", err)
-			}
-			err = apiextensions.RegisterCRDs(crdClient, crds)
-			if err != nil {
-				return fmt.Errorf("failed to register application crd, reason %v", err)
-			}
-		}
-		d := driver2.NewApplications(
-			newApplicationClient(lazyClient),
-			dynamic.NewForConfigOrDie(config),
-			rsmapper,
-		)
+
+		d := driver2.NewAppReleases(newAppReleaseClient(lazyClient))
 		d.Log = log
 		store = storage.Init(d)
 	case "secret", "secrets", "":

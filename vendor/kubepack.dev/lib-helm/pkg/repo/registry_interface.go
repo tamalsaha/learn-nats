@@ -3,13 +3,13 @@ package repo
 import (
 	"fmt"
 	"io/fs"
-	"strings"
 
 	"kubepack.dev/lib-helm/pkg/chart/loader"
+	releasesapi "x-helm.dev/apimachinery/apis/releases/v1alpha1"
 )
 
 type IRegistry interface {
-	GetChart(repository, chartName, chartVersion string) (*ChartExtended, error)
+	GetChart(srcRef releasesapi.ChartSourceRef) (*ChartExtended, error)
 }
 
 type EmbeddedRegistry struct {
@@ -20,14 +20,12 @@ func NewEmbeddedRegistry(fsys fs.FS) IRegistry {
 	return &EmbeddedRegistry{rootFS: fsys}
 }
 
-func (r EmbeddedRegistry) GetChart(repository, chartName, chartVersion string) (*ChartExtended, error) {
-	name, embedded := IsEmbedded(repository)
-	if !embedded {
-		return nil, fmt.Errorf("invalid repository format, expected embed://{chartName}, found: %s", repository)
+func (r EmbeddedRegistry) GetChart(srcRef releasesapi.ChartSourceRef) (*ChartExtended, error) {
+	if srcRef.SourceRef.Kind != releasesapi.SourceKindEmbed {
+		return nil, fmt.Errorf("invalid source kind, expected Embed, found: %s", srcRef.SourceRef.Kind)
 	}
-	if chartName != "" && chartName != name {
-		return nil, fmt.Errorf("invalid chartname, expected %s, found: %s", name, chartName)
-	}
+
+	name := srcRef.Name
 	if name == "" {
 		name = "."
 	}
@@ -44,9 +42,4 @@ func (r EmbeddedRegistry) GetChart(repository, chartName, chartVersion string) (
 	return &ChartExtended{
 		Chart: chrt,
 	}, nil
-}
-
-func IsEmbedded(repository string) (chartName string, embedded bool) {
-	repository = strings.TrimSpace(repository)
-	return strings.TrimPrefix(repository, "embed:///"), strings.HasPrefix(repository, "embed:///")
 }

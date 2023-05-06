@@ -31,15 +31,12 @@ import (
 	"sync"
 	"time"
 
-	"kubepack.dev/kubepack/apis"
-	"kubepack.dev/kubepack/apis/kubepack/v1alpha1"
-	"kubepack.dev/lib-helm/pkg/application"
-	chart2 "kubepack.dev/lib-helm/pkg/chart"
 	libchart "kubepack.dev/lib-helm/pkg/chart"
 	"kubepack.dev/lib-helm/pkg/repo"
+	"kubepack.dev/lib-helm/pkg/values"
 
 	"github.com/Masterminds/semver/v3"
-	jsonpatch "github.com/evanphx/json-patch"
+	jsonpatch "github.com/evanphx/json-patch/v5"
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob"
 	_ "gocloud.dev/blob/fileblob"
@@ -51,7 +48,7 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 	authorization "k8s.io/api/authorization/v1"
 	core "k8s.io/api/core/v1"
-	crdv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	crdv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	crd_cs "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -68,9 +65,11 @@ import (
 	disco_util "kmodules.xyz/client-go/discovery"
 	"kmodules.xyz/client-go/tools/parser"
 	wait2 "kmodules.xyz/client-go/tools/wait"
-	"sigs.k8s.io/application/api/app/v1beta1"
-	"sigs.k8s.io/application/client/clientset/versioned"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	yamllib "sigs.k8s.io/yaml"
+	"x-helm.dev/apimachinery/apis"
+	driversapi "x-helm.dev/apimachinery/apis/drivers/v1alpha1"
+	releasesapi "x-helm.dev/apimachinery/apis/releases/v1alpha1"
 )
 
 type DoFn func() error
@@ -78,7 +77,7 @@ type DoFn func() error
 type WaitForPrinter struct {
 	Name      string
 	Namespace string
-	WaitFors  []v1alpha1.WaitFlags
+	WaitFors  []releasesapi.WaitFlags
 	W         io.Writer
 }
 
@@ -145,7 +144,7 @@ func (x *WaitForPrinter) Do() error {
 
 type WaitForChecker struct {
 	Namespace string
-	WaitFors  []v1alpha1.WaitFlags
+	WaitFors  []releasesapi.WaitFlags
 
 	ClientGetter genericclioptions.RESTClientGetter
 }
@@ -262,19 +261,18 @@ func (x *CRDReadinessChecker) Do() error {
 	crds := make([]*apiextensions.CustomResourceDefinition, 0, len(x.CRDs))
 	for _, crd := range x.CRDs {
 		crds = append(crds, &apiextensions.CustomResourceDefinition{
-			V1beta1: &crdv1beta1.CustomResourceDefinition{
+			V1: &crdv1.CustomResourceDefinition{
 				ObjectMeta: v1.ObjectMeta{
 					Name: fmt.Sprintf("%s.%s", crd.Resource, crd.Group),
 				},
-				Spec: crdv1beta1.CustomResourceDefinitionSpec{
-					Group:   crd.Group,
-					Version: crd.Version,
-					Names: crdv1beta1.CustomResourceDefinitionNames{
+				Spec: crdv1.CustomResourceDefinitionSpec{
+					Group: crd.Group,
+					Names: crdv1.CustomResourceDefinitionNames{
 						Plural: crd.Resource,
 						// Kind:   crd.Kind,
 					},
 					// Scope: crdv1beta1.ResourceScope(string(crd.Scope)),
-					Versions: []crdv1beta1.CustomResourceDefinitionVersion{
+					Versions: []crdv1.CustomResourceDefinitionVersion{
 						{
 							Name: crd.Version,
 						},
@@ -287,29 +285,36 @@ func (x *CRDReadinessChecker) Do() error {
 }
 
 type Helm3CommandPrinter struct {
-	Registry    *repo.Registry
-	ChartRef    v1alpha1.ChartRef
-	Version     string
-	ReleaseName string
-	Namespace   string
-	ValuesFile  string
-	ValuesPatch *runtime.RawExtension
+	Registry      repo.IRegistry
+	ChartRef      releasesapi.ChartRef
+	Version       string
+	ReleaseName   string
+	Namespace     string
+	Values        values.Options
+	UseValuesFile bool
 
-	W io.Writer
+	W          io.Writer
+	valuesFile []byte
 }
 
 const indent = "  "
 
 func (x *Helm3CommandPrinter) Do() error {
-	chrt, err := x.Registry.GetChart(x.ChartRef.URL, x.ChartRef.Name, x.Version)
+	chrt, err := x.Registry.GetChart(releasesapi.ChartSourceRef{
+		Name:      x.ChartRef.Name,
+		Version:   x.Version,
+		SourceRef: x.ChartRef.SourceRef,
+	})
 	if err != nil {
 		return err
 	}
 
-	reponame, err := repo.DefaultNamer.Name(x.ChartRef.URL)
-	if err != nil {
-		return err
-	}
+	//reponame, err := repo.DefaultNamer.Name(x.ChartRef.URL)
+	//if err != nil {
+	//	return err
+	//}
+
+	reponame := x.ChartRef.Name
 
 	var buf bytes.Buffer
 
@@ -322,7 +327,8 @@ func (x *Helm3CommandPrinter) Do() error {
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(&buf, "helm repo add %s %s\n", reponame, x.ChartRef.URL)
+	// FixIt(tamal): generate command for OCI registry
+	_, err = fmt.Fprintf(&buf, "helm repo add %s %s\n", reponame, x.ChartRef.SourceRef.Namespace)
 	if err != nil {
 		return err
 	}
@@ -369,53 +375,37 @@ func (x *Helm3CommandPrinter) Do() error {
 		}
 	}
 
-	if x.ValuesPatch != nil {
-		vals := chrt.Values
-
-		if x.ValuesFile != "" {
-			for _, f := range chrt.Raw {
-				if f.Name == x.ValuesFile {
-					if err := yamllib.Unmarshal(f.Data, &vals); err != nil {
-						return fmt.Errorf("cannot load %s. Reason: %v", f.Name, err.Error())
-					}
-					break
-				}
-			}
-		}
-		values, err := json.Marshal(vals)
+	modified, err := x.Values.MergeValues(chrt.Chart)
+	if err != nil {
+		return err
+	}
+	if x.UseValuesFile {
+		x.valuesFile, err = values.GetValuesDiffYAML(chrt.Values, modified)
 		if err != nil {
 			return err
 		}
-
-		patchData, err := json.Marshal(x.ValuesPatch)
+		_, err = fmt.Fprintf(&buf, "%s--values=values.yaml", indent)
 		if err != nil {
 			return err
 		}
-		patch, err := jsonpatch.DecodePatch(patchData)
-		if err != nil {
-			return err
-		}
-		modifiedValues, err := patch.Apply(values)
-		if err != nil {
-			return err
-		}
-		var modified map[string]interface{}
-		err = json.Unmarshal(modifiedValues, &modified)
-		if err != nil {
-			return err
-		}
-		setValues, err := chart2.GetChangedValues(chrt.Values, modified)
+	} else {
+		setValues, err := values.GetChangedValues(chrt.Values, modified)
 		if err != nil {
 			return err
 		}
 		for _, v := range setValues {
+			// xref: https://github.com/kubepack/lib-helm/issues/72
+			if strings.ContainsRune(v, '\n') {
+				idx := strings.IndexRune(v, '=')
+				return fmt.Errorf(`found \n is values for %s`, v[:idx])
+			}
 			_, err = fmt.Fprintf(&buf, "%s--set %s \\\n", indent, v)
 			if err != nil {
 				return err
 			}
 		}
+		buf.Truncate(buf.Len() - 3)
 	}
-	buf.Truncate(buf.Len() - 3)
 
 	_, err = buf.WriteRune('\n')
 	if err != nil {
@@ -426,9 +416,13 @@ func (x *Helm3CommandPrinter) Do() error {
 	return err
 }
 
+func (x *Helm3CommandPrinter) ValuesFile() []byte {
+	return x.valuesFile
+}
+
 type YAMLPrinter struct {
-	Registry    *repo.Registry
-	ChartRef    v1alpha1.ChartRef
+	Registry    repo.IRegistry
+	ChartRef    releasesapi.ChartRef
 	Version     string
 	ReleaseName string
 	Namespace   string
@@ -456,7 +450,11 @@ func (x *YAMLPrinter) Do() error {
 
 	var buf bytes.Buffer
 
-	chrt, err := x.Registry.GetChart(x.ChartRef.URL, x.ChartRef.Name, x.Version)
+	chrt, err := x.Registry.GetChart(releasesapi.ChartSourceRef{
+		Name:      x.ChartRef.Name,
+		Version:   x.Version,
+		SourceRef: x.ChartRef.SourceRef,
+	})
 	if err != nil {
 		return err
 	}
@@ -671,8 +669,8 @@ type ResourcePermission struct {
 }
 
 type PermissionChecker struct {
-	Registry    *repo.Registry
-	ChartRef    v1alpha1.ChartRef
+	Registry    repo.IRegistry
+	ChartRef    releasesapi.ChartRef
 	Version     string
 	ReleaseName string
 	Namespace   string
@@ -691,7 +689,11 @@ func (x *PermissionChecker) Do() error {
 		x.attrs = make(map[authorization.ResourceAttributes]*ResourcePermission)
 	}
 
-	chrt, err := x.Registry.GetChart(x.ChartRef.URL, x.ChartRef.Name, x.Version)
+	chrt, err := x.Registry.GetChart(releasesapi.ChartSourceRef{
+		Name:      x.ChartRef.Name,
+		Version:   x.Version,
+		SourceRef: x.ChartRef.SourceRef,
+	})
 	if err != nil {
 		return err
 	}
@@ -874,38 +876,38 @@ func (x *PermissionChecker) Result() (map[authorization.ResourceAttributes]*Reso
 	return x.attrs, true
 }
 
-type ApplicationCRDRegPrinter struct {
+type AppReleaseCRDRegPrinter struct {
 	W io.Writer
 }
 
-func (x *ApplicationCRDRegPrinter) Do() error {
-	_, err := fmt.Fprintln(x.W, "kubectl apply -f https://github.com/kubernetes-sigs/application/raw/c8e2959e57a02b3877b394984a288f9178977d8b/config/crd/bases/app.k8s.io_applications.yaml")
+func (x *AppReleaseCRDRegPrinter) Do() error {
+	_, err := fmt.Fprintln(x.W, "kubectl apply -f https://github.com/x-helm/apimachinery/raw/master/crds/drivers.x-helm.dev_appreleases.yaml")
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintln(x.W, "kubectl wait --for=condition=Established crds/applications.app.k8s.io --timeout=5m")
+	_, err = fmt.Fprintln(x.W, "kubectl wait --for=condition=Established crds/appreleases.drivers.x-helm.dev --timeout=5m")
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-type ApplicationCRDRegistrar struct {
+type AppReleaseCRDRegistrar struct {
 	Config *rest.Config
 }
 
-func (x *ApplicationCRDRegistrar) Do() error {
+func (x *AppReleaseCRDRegistrar) Do() error {
 	apiextClient, err := crd_cs.NewForConfig(x.Config)
 	if err != nil {
 		return err
 	}
 	return apiextensions.RegisterCRDs(apiextClient, []*apiextensions.CustomResourceDefinition{
-		application.CustomResourceDefinition(),
+		driversapi.AppRelease{}.CustomResourceDefinition(),
 	})
 }
 
 type ApplicationUploader struct {
-	App       *v1beta1.Application
+	App       *driversapi.AppRelease
 	UID       string
 	BucketURL string
 	PublicURL string
@@ -949,35 +951,39 @@ func (x *ApplicationUploader) Do() error {
 }
 
 type ApplicationCreator struct {
-	App    *v1beta1.Application
-	Client *versioned.Clientset
+	App    *driversapi.AppRelease
+	Client client.Client
 }
 
 func (x *ApplicationCreator) Do() error {
-	_, err := x.Client.AppV1beta1().Applications(x.App.Namespace).Create(context.TODO(), x.App, metav1.CreateOptions{})
+	err := x.Client.Create(context.TODO(), x.App)
 	return err
 }
 
 type ApplicationGenerator struct {
-	Registry *repo.Registry
-	Chart    v1alpha1.ChartSelection
+	Registry repo.IRegistry
+	Chart    releasesapi.ChartSelection
 	chrt     *chart.Chart
 
 	KubeVersion string
 
-	components   map[metav1.GroupKind]struct{}
+	components   map[metav1.GroupVersionKind]struct{}
 	commonLabels map[string]string
 }
 
 func (x *ApplicationGenerator) Do() error {
 	if x.components == nil {
-		x.components = make(map[metav1.GroupKind]struct{})
+		x.components = make(map[metav1.GroupVersionKind]struct{})
 	}
 	if x.commonLabels == nil {
 		x.commonLabels = make(map[string]string)
 	}
 
-	chrt, err := x.Registry.GetChart(x.Chart.URL, x.Chart.Name, x.Chart.Version)
+	chrt, err := x.Registry.GetChart(releasesapi.ChartSourceRef{
+		Name:      x.Chart.Name,
+		Version:   x.Chart.Version,
+		SourceRef: x.Chart.SourceRef,
+	})
 	x.chrt = chrt.Chart
 	if err != nil {
 		return err
@@ -1117,57 +1123,54 @@ func (x *ApplicationGenerator) Do() error {
 			}
 		}
 	}
-	x.components, x.commonLabels, err = parser.ExtractComponents(manifestDoc.Bytes())
+	x.components, x.commonLabels, err = parser.ExtractComponentGVKs(manifestDoc.Bytes())
 	return err
 }
 
-func (x *ApplicationGenerator) Result() *v1beta1.Application {
+func (x *ApplicationGenerator) Result() *driversapi.AppRelease {
 	desc := GetPackageDescriptor(x.chrt)
 
-	b := &v1beta1.Application{
+	b := &driversapi.AppRelease{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: v1alpha1.SchemeGroupVersion.String(),
-			Kind:       "Application",
+			APIVersion: releasesapi.GroupVersion.String(),
+			Kind:       "AppRelease",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      x.Chart.ReleaseName,
 			Namespace: x.Chart.Namespace,
 			Labels:    nil, // TODO: ?
 			Annotations: map[string]string{
-				apis.LabelChartURL:     x.Chart.URL,
+				apis.LabelChartURL:     x.Chart.SourceRef.Namespace + "/" + x.Chart.SourceRef.Name,
 				apis.LabelChartName:    x.Chart.Name,
 				apis.LabelChartVersion: x.Chart.Version,
 			},
 		},
-		Spec: v1beta1.ApplicationSpec{
-			Descriptor: v1beta1.Descriptor{
+		Spec: driversapi.AppReleaseSpec{
+			Descriptor: driversapi.Descriptor{
 				Type:        x.chrt.Name(),
 				Description: desc.Description,
-				Icons:       v1alpha1.ConvertImageSpec(desc.Icons),
-				Maintainers: v1alpha1.ConvertContactData(desc.Maintainers),
+				Icons:       desc.Icons,
+				Maintainers: desc.Maintainers,
 				Keywords:    desc.Keywords,
-				Links:       v1alpha1.ConvertLink(desc.Links),
+				Links:       desc.Links,
 				Notes:       "",
 				Version:     x.chrt.Metadata.AppVersion,
 				Owners:      nil, // TODO: Add the user email who is installing this app
 			},
-			AddOwnerRef:   false,
-			Info:          nil,
-			AssemblyPhase: v1beta1.Ready,
 		},
 	}
 
-	gks := make([]metav1.GroupKind, 0, len(x.components))
+	gvks := make([]metav1.GroupVersionKind, 0, len(x.components))
 	for gk := range x.components {
-		gks = append(gks, gk)
+		gvks = append(gvks, gk)
 	}
-	sort.Slice(gks, func(i, j int) bool {
-		if gks[i].Group == gks[j].Group {
-			return gks[i].Kind < gks[j].Kind
+	sort.Slice(gvks, func(i, j int) bool {
+		if gvks[i].Group == gvks[j].Group {
+			return gvks[i].Kind < gvks[j].Kind
 		}
-		return gks[i].Group < gks[j].Group
+		return gvks[i].Group < gvks[j].Group
 	})
-	b.Spec.ComponentGroupKinds = gks
+	b.Spec.Components = gvks
 
 	if len(x.commonLabels) > 0 {
 		b.Spec.Selector = &metav1.LabelSelector{

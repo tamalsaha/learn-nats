@@ -30,51 +30,47 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kblabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/validation"
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/cache"
-	"kmodules.xyz/client-go/discovery"
+	cu "kmodules.xyz/client-go/client"
 	meta_util "kmodules.xyz/client-go/meta"
-	"sigs.k8s.io/application/api/app/v1beta1"
-	cs "sigs.k8s.io/application/client/clientset/versioned/typed/app/v1beta1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	driversapi "x-helm.dev/apimachinery/apis/drivers/v1alpha1"
 )
 
 const (
-	annotaionScopeReleaseName = "name.release.x-helm.dev" // "/${name}" : ""
+	labelScopeReleaseName   = "release.x-helm.dev/name"
+	labelScopeReleaseStatus = "release.x-helm.dev/status"
 )
 
-var _ driver.Driver = (*Applications)(nil)
+var _ driver.Driver = (*AppReleases)(nil)
 
-// ApplicationsDriverName is the string name of the driver.
-const ApplicationsDriverName = "storage.x-helm.dev/apps"
+// AppReleasesDriverName is the string name of the driver.
+const AppReleasesDriverName = "drivers.x-helm.dev/appreleases"
 
-// Applications is a wrapper around an implementation of a kubernetes
-// ApplicationsInterface.
-type Applications struct {
-	ai  cs.ApplicationInterface
-	di  dynamic.Interface
-	cl  discovery.ResourceMapper
+// AppReleases is a wrapper around an implementation of a kubernetes
+// AppReleasesInterface.
+type AppReleases struct {
+	kc  client.Client
 	Log func(string, ...interface{})
 }
 
-// NewApplications initializes a new Applications wrapping an implementation of
-// the kubernetes ApplicationsInterface.
-func NewApplications(ai cs.ApplicationInterface, di dynamic.Interface, cl discovery.ResourceMapper) *Applications {
-	return &Applications{
-		ai:  ai,
-		di:  di,
-		cl:  cl,
+// NewAppReleases initializes a new AppReleases wrapping an implementation of
+// the kubernetes AppReleasesInterface.
+func NewAppReleases(ai client.Client) *AppReleases {
+	return &AppReleases{
+		kc:  ai,
 		Log: func(_ string, _ ...interface{}) {},
 	}
 }
 
 // Name returns the name of the driver.
-func (d *Applications) Name() string {
-	return ApplicationsDriverName
+func (d *AppReleases) Name() string {
+	return AppReleasesDriverName
 }
 
 // Get fetches the release named by key. The corresponding release is returned
 // or error if not found.
-func (d *Applications) Get(key string) (*rspb.Release, error) {
+func (d *AppReleases) Get(key string) (*rspb.Release, error) {
 	relName, _, err := ParseKey(key)
 	if err != nil {
 		return nil, err
@@ -82,7 +78,7 @@ func (d *Applications) Get(key string) (*rspb.Release, error) {
 
 	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			fmt.Sprintf("%s/%s", annotaionScopeReleaseName, relName): relName,
+			labelScopeReleaseName: relName,
 		},
 	})
 	if err != nil {
@@ -90,9 +86,8 @@ func (d *Applications) Get(key string) (*rspb.Release, error) {
 	}
 
 	// fetch the configmap holding the release named by key
-	result, err := d.ai.List(context.Background(), metav1.ListOptions{
-		LabelSelector: selector.String(),
-	})
+	var result driversapi.AppReleaseList
+	err = d.kc.List(context.Background(), &result, client.MatchingLabelsSelector{Selector: selector})
 	if err != nil {
 		d.Log("get: failed to get release %q: %s", relName, err)
 		return nil, err
@@ -109,28 +104,28 @@ func (d *Applications) Get(key string) (*rspb.Release, error) {
 			}
 			names = append(names, name)
 		}
-		return nil, fmt.Errorf("multiple matching application objects found %s", strings.Join(names, ","))
+		return nil, fmt.Errorf("multiple matching appRelease objects found %s", strings.Join(names, ","))
 	}
 	obj := &result.Items[0]
 
 	// found the configmap, decode the base64 data string
-	r, err := decodeReleaseFromApp(obj, []string{relName}, d.di, d.cl)
+	rls, err := decodeReleaseFromApp(d.kc, obj)
 	if err != nil {
 		d.Log("get: failed to decode data %q: %s", key, err)
 		return nil, err
 	}
 	// return the release object
-	return r[0], nil
+	return rls, nil
 }
 
 // List fetches all releases and returns the list releases such
 // that filter(release) == true. An error is returned if the
 // configmap fails to retrieve the releases.
-func (d *Applications) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
-	lsel := kblabels.Set{"owner": "helm"}.AsSelector()
-	opts := metav1.ListOptions{LabelSelector: lsel.String()}
-
-	list, err := d.ai.List(context.Background(), opts)
+func (d *AppReleases) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
+	var list driversapi.AppReleaseList
+	err := d.kc.List(context.Background(), &list, client.MatchingLabels{
+		"owner": "helm",
+	})
 	if err != nil {
 		d.Log("list: failed to list: %s", err)
 		return nil, err
@@ -141,15 +136,13 @@ func (d *Applications) List(filter func(*rspb.Release) bool) ([]*rspb.Release, e
 	// iterate over the configmaps object list
 	// and decode each release
 	for _, item := range list.Items {
-		releases, err := decodeReleaseFromApp(&item, nil, d.di, d.cl)
+		rls, err := decodeReleaseFromApp(d.kc, &item)
 		if err != nil {
 			d.Log("list: failed to decode release: %v: %s", item, err)
 			continue
 		}
-		for _, rls := range releases {
-			if filter(rls) {
-				results = append(results, rls)
-			}
+		if filter(rls) {
+			results = append(results, rls)
 		}
 	}
 	return results, nil
@@ -157,7 +150,7 @@ func (d *Applications) List(filter func(*rspb.Release) bool) ([]*rspb.Release, e
 
 // Query fetches all releases that match the provided map of labels.
 // An error is returned if the configmap fails to retrieve the releases.
-func (d *Applications) Query(labels map[string]string) ([]*rspb.Release, error) {
+func (d *AppReleases) Query(labels map[string]string) ([]*rspb.Release, error) {
 	ls := kblabels.Set{}
 	for k, v := range labels {
 		if errs := validation.IsValidLabelValue(v); len(errs) != 0 {
@@ -166,9 +159,8 @@ func (d *Applications) Query(labels map[string]string) ([]*rspb.Release, error) 
 		ls[k] = v
 	}
 
-	opts := metav1.ListOptions{LabelSelector: ls.AsSelector().String()}
-
-	list, err := d.ai.List(context.Background(), opts)
+	var list driversapi.AppReleaseList
+	err := d.kc.List(context.Background(), &list, client.MatchingLabels(ls))
 	if err != nil {
 		d.Log("query: failed to query with labels: %s", err)
 		return nil, err
@@ -180,54 +172,56 @@ func (d *Applications) Query(labels map[string]string) ([]*rspb.Release, error) 
 
 	var results []*rspb.Release
 	for _, item := range list.Items {
-		releases, err := decodeReleaseFromApp(&item, relevantReleases(labels), d.di, d.cl)
+		rls, err := decodeReleaseFromApp(d.kc, &item)
 		if err != nil {
 			d.Log("query: failed to decode release: %s", err)
 			continue
 		}
-		results = append(results, releases...)
+		results = append(results, rls)
 	}
 	return results, nil
 }
 
-// Create creates a new Application holding the release. If the
-// Application already exists, ErrReleaseExists is returned.
-func (d *Applications) Create(_ string, rls *rspb.Release) error {
+// Create creates a new AppRelease holding the release. If the
+// AppRelease already exists, ErrReleaseExists is returned.
+func (d *AppReleases) Create(_ string, rls *rspb.Release) error {
 	// create a new configmap to hold the release
-	obj := newApplicationObject(rls)
+	obj := mustNewAppReleaseObject(rls)
 
 	// push the configmap object out into the kubiverse
-	_, _, err := createOrPatchApplication(context.Background(), d.ai, obj.ObjectMeta, func(in *v1beta1.Application) *v1beta1.Application {
+	_, _, err := cu.CreateOrPatch(context.Background(), d.kc, obj, func(o client.Object, createOp bool) client.Object {
+		in := o.(*driversapi.AppRelease)
+
 		in.Labels = meta_util.OverwriteKeys(in.Labels, obj.Labels)
 		in.Annotations = meta_util.OverwriteKeys(in.Annotations, obj.Annotations)
 
 		// merge GKs
-		gkMap := map[metav1.GroupKind]interface{}{}
-		for _, gk := range in.Spec.ComponentGroupKinds {
-			gkMap[gk] = empty
+		gvkMap := map[metav1.GroupVersionKind]interface{}{}
+		for _, gvk := range in.Spec.Components {
+			gvkMap[gvk] = empty
 		}
-		for _, gk := range obj.Spec.ComponentGroupKinds {
-			gkMap[gk] = empty
+		for _, gvk := range obj.Spec.Components {
+			gvkMap[gvk] = empty
 		}
-		gks := make([]metav1.GroupKind, 0, len(gkMap))
-		for gk := range gkMap {
-			gks = append(gks, gk)
+		gvks := make([]metav1.GroupVersionKind, 0, len(gvkMap))
+		for gk := range gvkMap {
+			gvks = append(gvks, gk)
 		}
-		sort.Slice(gks, func(i, j int) bool {
-			if gks[i].Group == gks[j].Group {
-				return gks[i].Kind < gks[j].Kind
+		sort.Slice(gvks, func(i, j int) bool {
+			if gvks[i].Group == gvks[j].Group {
+				return gvks[i].Kind < gvks[j].Kind
 			}
-			return gks[i].Group < gks[j].Group
+			return gvks[i].Group < gvks[j].Group
 		})
 
 		if err := mergo.Merge(&in.Spec, &obj.Spec); err != nil {
 			panic(fmt.Errorf("failed to update appliation %s/%s spec, reason: %v", in.Namespace, in.Name, err))
 		}
 		in.Spec.Selector = obj.Spec.Selector
-		in.Spec.ComponentGroupKinds = gks
-		in.Spec.AssemblyPhase = obj.Spec.AssemblyPhase
+		in.Spec.Components = gvks
+		in.Spec.Release = obj.Spec.Release
 		return in
-	}, metav1.PatchOptions{})
+	})
 	if err != nil {
 		//if apierrors.IsAlreadyExists(err) {
 		//	return driver.ErrReleaseExists
@@ -239,9 +233,9 @@ func (d *Applications) Create(_ string, rls *rspb.Release) error {
 	return nil
 }
 
-// Update updates the Application holding the release. If not found
-// the Application is created to hold the release.
-func (d *Applications) Update(_ string, rls *rspb.Release) error {
+// Update updates the AppRelease holding the release. If not found
+// the AppRelease is created to hold the release.
+func (d *AppReleases) Update(_ string, rls *rspb.Release) error {
 	// Bypass update call if called on originalRelease.
 	// Update() just updates the modifiedAt timestamp. This is not that important for our app driver.
 	if rls.Chart == nil || rls.Chart.Metadata == nil {
@@ -249,19 +243,21 @@ func (d *Applications) Update(_ string, rls *rspb.Release) error {
 	}
 
 	// create a new configmap object to hold the release
-	obj := newApplicationObject(rls)
-	obj.Annotations["modified-at.release.x-helm.dev/"+rls.Name] = time.Now().UTC().Format(time.RFC3339)
+	obj := mustNewAppReleaseObject(rls)
+	obj.Spec.Release.ModifiedAt = &metav1.Time{Time: time.Now().UTC()}
 
 	// push the configmap object out into the kubiverse
-	_, _, err := createOrPatchApplication(context.Background(), d.ai, obj.ObjectMeta, func(in *v1beta1.Application) *v1beta1.Application {
+	_, _, err := cu.CreateOrPatch(context.Background(), d.kc, obj, func(o client.Object, createOp bool) client.Object {
+		in := o.(*driversapi.AppRelease)
+
 		in.Labels = meta_util.MergeKeys(in.Labels, obj.Labels)
 		in.Annotations = meta_util.MergeKeys(in.Annotations, obj.Annotations)
 		if err := mergo.Merge(&in.Spec, &obj.Spec); err != nil {
 			panic(fmt.Errorf("failed to update appliation %s/%s spec, reason: %v", in.Namespace, in.Name, err))
 		}
-		in.Spec.AssemblyPhase = obj.Spec.AssemblyPhase
+		in.Spec.Release = obj.Spec.Release
 		return in
-	}, metav1.PatchOptions{})
+	})
 	if err != nil {
 		d.Log("update: failed to update: %s", err)
 		return err
@@ -269,8 +265,8 @@ func (d *Applications) Update(_ string, rls *rspb.Release) error {
 	return nil
 }
 
-// Delete deletes the Application holding the release named by key.
-func (d *Applications) Delete(key string) (rls *rspb.Release, err error) {
+// Delete deletes the AppRelease holding the release named by key.
+func (d *AppReleases) Delete(key string) (rls *rspb.Release, err error) {
 	relName, _, err := ParseKey(key)
 	if err != nil {
 		return nil, err
@@ -284,16 +280,11 @@ func (d *Applications) Delete(key string) (rls *rspb.Release, err error) {
 		return nil, err
 	}
 	// delete the release
-	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
-		MatchLabels: map[string]string{
-			fmt.Sprintf("%s/%s", annotaionScopeReleaseName, relName): relName,
-		},
-	})
 	if err != nil {
 		return nil, err
 	}
-	if err = d.ai.DeleteCollection(context.Background(), metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: selector.String(),
+	if err = d.kc.DeleteAllOf(context.Background(), new(driversapi.AppRelease), client.MatchingLabels{
+		labelScopeReleaseName: relName,
 	}); err != nil {
 		return rls, err
 	}

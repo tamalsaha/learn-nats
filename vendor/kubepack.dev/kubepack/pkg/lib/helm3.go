@@ -23,12 +23,15 @@ import (
 	"path"
 	"strings"
 
-	"kubepack.dev/kubepack/apis"
-	"kubepack.dev/kubepack/apis/kubepack/v1alpha1"
 	"kubepack.dev/lib-helm/pkg/repo"
+	"kubepack.dev/lib-helm/pkg/values"
+
+	"gomodules.xyz/encoding/json"
+	"x-helm.dev/apimachinery/apis"
+	releasesapi "x-helm.dev/apimachinery/apis/releases/v1alpha1"
 )
 
-func GenerateHelm3Script(bs *BlobStore, reg *repo.Registry, order v1alpha1.Order, opts ...ScriptOption) ([]ScriptRef, error) {
+func GenerateHelm3Script(bs *BlobStore, reg repo.IRegistry, order releasesapi.Order, opts ...ScriptOption) ([]ScriptRef, error) {
 	var buf bytes.Buffer
 	var err error
 
@@ -44,8 +47,8 @@ func GenerateHelm3Script(bs *BlobStore, reg *repo.Registry, order v1alpha1.Order
 		}
 	}
 
-	if !scriptOptions.DisableApplicationCRD {
-		f1 := &ApplicationCRDRegPrinter{
+	if !scriptOptions.DisableAppReleaseCRD {
+		f1 := &AppReleaseCRDRegPrinter{
 			W: &buf,
 		}
 		err = f1.Do()
@@ -69,9 +72,11 @@ func GenerateHelm3Script(bs *BlobStore, reg *repo.Registry, order v1alpha1.Order
 			Version:     pkg.Chart.Version,
 			ReleaseName: pkg.Chart.ReleaseName,
 			Namespace:   pkg.Chart.Namespace,
-			ValuesFile:  pkg.Chart.ValuesFile,
-			ValuesPatch: pkg.Chart.ValuesPatch,
-			W:           &buf,
+			Values: values.Options{
+				ValuesFile:  pkg.Chart.ValuesFile,
+				ValuesPatch: pkg.Chart.ValuesPatch,
+			},
+			W: &buf,
 		}
 		err = f3.Do()
 		if err != nil {
@@ -100,7 +105,7 @@ func GenerateHelm3Script(bs *BlobStore, reg *repo.Registry, order v1alpha1.Order
 			}
 		}
 
-		if !scriptOptions.DisableApplicationCRD {
+		if !scriptOptions.DisableAppReleaseCRD {
 			f6 := &ApplicationGenerator{
 				Registry:    reg,
 				Chart:       *pkg.Chart,
@@ -161,4 +166,59 @@ func GenerateHelm3Script(bs *BlobStore, reg *repo.Registry, order v1alpha1.Order
 			Script:  buf.String(),
 		},
 	}, nil
+}
+
+func PrintHelm3CommandFromStructValues(reg repo.IRegistry, opts releasesapi.InstallOptions, baseValuesStruct, modValuesStruct interface{}, useValuesFile bool) (string, []byte, error) {
+	baseMap, err := toJson(baseValuesStruct)
+	if err != nil {
+		return "", nil, err
+	}
+	modMap, err := toJson(modValuesStruct)
+	if err != nil {
+		return "", nil, err
+	}
+	applyValues, err := values.GetValuesDiff(baseMap, modMap)
+	if err != nil {
+		return "", nil, err
+	}
+	return PrintHelm3Command(reg, opts, applyValues, useValuesFile)
+}
+
+func PrintHelm3Command(reg repo.IRegistry, opts releasesapi.InstallOptions, applyValues map[string]interface{}, useValuesFile bool) (string, []byte, error) {
+	valuesBytes, err := json.Marshal(applyValues)
+	if err != nil {
+		return "", nil, err
+	}
+
+	var buf bytes.Buffer
+	f3 := &Helm3CommandPrinter{
+		Registry:    reg,
+		ChartRef:    opts.ChartRef,
+		Version:     opts.Version,
+		ReleaseName: opts.ReleaseName,
+		Namespace:   opts.Namespace,
+		Values: values.Options{
+			ValueBytes: [][]byte{valuesBytes},
+		},
+		UseValuesFile: useValuesFile,
+		W:             &buf,
+	}
+	err = f3.Do()
+	if err != nil {
+		return "", nil, err
+	}
+	return buf.String(), f3.ValuesFile(), nil
+}
+
+func toJson(v interface{}) (map[string]interface{}, error) {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	var out map[string]interface{}
+	err = json.Unmarshal(data, &out)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
