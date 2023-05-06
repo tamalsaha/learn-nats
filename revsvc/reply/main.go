@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
+
 	"github.com/nats-io/nats.go"
 	"github.com/tamalsaha/nats-hop-demo/revsvc/backend"
 	"k8s.io/client-go/util/homedir"
 	"k8s.io/klog/v2"
-	"path/filepath"
 )
 
 // B replies

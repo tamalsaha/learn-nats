@@ -1,12 +1,13 @@
 package main
 
 import (
-	"github.com/rs/xid"
-	"github.com/tamalsaha/nats-hop-demo/revsvc/backend"
-	"k8s.io/client-go/util/homedir"
 	"log"
 	"path/filepath"
 	"time"
+
+	"github.com/rs/xid"
+	"github.com/tamalsaha/nats-hop-demo/revsvc/backend"
+	"k8s.io/client-go/util/homedir"
 )
 
 // A requests

@@ -6,8 +6,7 @@ import (
 	"reflect"
 )
 
-type Request struct {
-}
+type Request struct{}
 
 func run(ctx context.Context, data Request) error {
 	return nil

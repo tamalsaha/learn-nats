@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/nats-io/nats.go"
 	"log"
 	"os"
 	"time"
+
+	"github.com/nats-io/nats.go"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/logr/funcr"
