@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/nats-io/nats.go"
-	"github.com/tamalsaha/nats-hop-demo/revsvc/backend"
+	"github.com/tamalsaha/learn-nats/revsvc/backend"
 	"k8s.io/client-go/util/homedir"
 	"k8s.io/klog/v2"
 )

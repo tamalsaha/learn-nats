@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/nats-io/nats.go"
-	"github.com/tamalsaha/nats-hop-demo/shared"
-	"github.com/tamalsaha/nats-hop-demo/transport"
+	"github.com/tamalsaha/learn-nats/shared"
+	"github.com/tamalsaha/learn-nats/transport"
 	core "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

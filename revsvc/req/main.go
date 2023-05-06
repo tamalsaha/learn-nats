@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/rs/xid"
-	"github.com/tamalsaha/nats-hop-demo/revsvc/backend"
+	"github.com/tamalsaha/learn-nats/revsvc/backend"
 	"k8s.io/client-go/util/homedir"
 )
 

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tamalsaha/nats-hop-demo/shared"
-	"github.com/tamalsaha/nats-hop-demo/transport"
+	"github.com/tamalsaha/learn-nats/shared"
+	"github.com/tamalsaha/learn-nats/transport"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"

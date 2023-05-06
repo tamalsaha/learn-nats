@@ -1,4 +1,4 @@
-module github.com/tamalsaha/nats-hop-demo
+module github.com/tamalsaha/learn-nats
 
 go 1.18
 
