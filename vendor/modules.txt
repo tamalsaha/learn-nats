@@ -912,10 +912,10 @@ go.uber.org/zap/internal/bufferpool
 go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
-# go.wandrs.dev/binding v0.0.2
-## explicit; go 1.16
+# go.wandrs.dev/binding v0.0.3-0.20230304220051-138903268a03
+## explicit; go 1.19
 go.wandrs.dev/binding
-# go.wandrs.dev/http v0.0.3
+# go.wandrs.dev/http v0.0.2
 ## explicit; go 1.18
 go.wandrs.dev/http
 # go.wandrs.dev/inject v0.0.1

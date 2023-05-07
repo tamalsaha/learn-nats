@@ -5,6 +5,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"github.com/tamalsaha/learn-nats/shared"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -82,12 +85,62 @@ func (rt *NatsTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	msg, err := rt.Conn.RequestMsg(&nats.Msg{
-		Subject: rt.Subject,
-		Data:    buf.Bytes(),
-	}, timeout)
+	return Proxy(r, rt.Conn, rt.Subject, buf.Bytes(), timeout)
+}
+
+const HeaderKeyDone = "Done"
+
+// SEE: https://github.com/nats-io/nats.docs/blob/master/using-nats/developing-with-nats/sending/replyto.md#including-a-reply-subject
+func Proxy(req *http.Request, nc *nats.Conn, reSubj string, data []byte, timeout time.Duration) (*http.Response, error) {
+	hubRespSub, edgeRespSub := shared.ProxyResponseSubjects()
+
+	// Listen for a single response
+	sub, err := nc.SubscribeSync(hubRespSub)
 	if err != nil {
 		return nil, err
 	}
-	return http.ReadResponse(bufio.NewReader(bytes.NewReader(msg.Data)), r)
+
+	// Send the request.
+	if err := nc.PublishRequest(reSubj, edgeRespSub, data); err != nil {
+		return nil, err
+	}
+
+	r, w := io.Pipe()
+	go func() {
+		var e2 error
+
+		defer func() {
+			if e2 != nil {
+				_ = w.CloseWithError(e2)
+			} else {
+				_ = w.Close()
+			}
+			_ = sub.Unsubscribe()
+		}()
+
+		for {
+			var msg *nats.Msg
+			msg, e2 = sub.NextMsg(timeout)
+			if e2 != nil {
+				if e2 == nats.ErrTimeout {
+					e2 = nil
+					continue // ignore ErrTimeout
+				}
+				break
+			}
+
+			_, e2 = w.Write(msg.Data)
+			if e2 != nil {
+				break
+			}
+			if results, ok := msg.Header[HeaderKeyDone]; ok {
+				if results[0] != "" {
+					e2 = errors.New(results[0])
+				}
+				break
+			}
+		}
+	}()
+
+	return http.ReadResponse(bufio.NewReader(r), req)
 }

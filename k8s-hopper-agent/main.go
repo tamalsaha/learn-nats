@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/tamalsaha/learn-nats/natsclient"
 	"io"
 	"net"
 	"net/http"
@@ -33,12 +34,13 @@ import (
 
 var pool = sync.Pool{
 	New: func() interface{} {
-		return new(bytes.Buffer)
+		// https://docs.nats.io/reference/faq#is-there-a-message-size-limitation-in-nats
+		return bufio.NewWriterSize(nil, 8*1024) // 8 KB
 	},
 }
 
 func main() {
-	nc, err := nats.Connect(shared.NATS_URL)
+	nc, err := natsclient.NewConnection(shared.NATS_URL, "")
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -103,21 +105,23 @@ func main() {
 			}
 		}
 
-		buf := pool.Get().(*bytes.Buffer)
-		defer pool.Put(buf)
-		buf.Reset()
-
-		respMsg := &nats.Msg{
-			Subject: msg.Reply,
-		}
-		if err := resp.Write(buf); err != nil { // WriteProxy
-			respMsg.Data = []byte(err.Error())
-		} else {
-			respMsg.Data = buf.Bytes()
+		ncw := &natsWriter{
+			nc:   nc,
+			subj: msg.Reply,
 		}
 
-		if err := msg.RespondMsg(respMsg); err != nil {
-			klog.ErrorS(err, "failed to respond to proxy request")
+		w := pool.Get().(*bufio.Writer)
+		defer pool.Put(w)
+		w.Reset(ncw)
+
+		err = resp.Write(w)
+		ncw.final = true
+		if err != nil {
+			_, _ = ncw.WriteError(err)
+			return
+		}
+		if e2 := w.Flush(); e2 != nil {
+			klog.ErrorS(e2, "failed to flush buffer")
 		}
 	})
 	if err != nil {
@@ -259,4 +263,40 @@ func main_() {
 	if err := http.ListenAndServe(":4000", m); err != nil {
 		klog.Fatalln(err)
 	}
+}
+
+type natsWriter struct {
+	nc    *nats.Conn
+	subj  string
+	final bool
+}
+
+var _ io.Writer = &natsWriter{}
+
+func (w *natsWriter) Write(data []byte) (int, error) {
+	h := nats.Header{}
+	if w.final {
+		h.Set(transport.HeaderKeyDone, "")
+	}
+	return len(data), w.nc.PublishMsg(&nats.Msg{
+		Subject: w.subj,
+		Data:    data,
+		Header:  h,
+	})
+}
+
+func (w *natsWriter) WriteError(err error) (int, error) {
+	h := nats.Header{}
+	if w.final {
+		if err == nil {
+			h.Set(transport.HeaderKeyDone, "")
+		} else {
+			h.Set(transport.HeaderKeyDone, err.Error())
+		}
+	}
+	return 0, w.nc.PublishMsg(&nats.Msg{
+		Subject: w.subj,
+		Data:    nil,
+		Header:  h,
+	})
 }

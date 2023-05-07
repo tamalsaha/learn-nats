@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/tamalsaha/learn-nats/natsclient"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -29,9 +30,7 @@ import (
 )
 
 func main() {
-	http.Get("")
-
-	nc, err := nats.Connect(shared.NATS_URL)
+	nc, err := natsclient.NewConnection(shared.NATS_URL, "")
 	if err != nil {
 		klog.Fatalln(err)
 	}

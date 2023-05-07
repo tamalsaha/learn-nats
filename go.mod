@@ -12,7 +12,7 @@ require (
 	github.com/rs/xid v1.4.0
 	github.com/unrolled/render v1.6.0
 	go.bytebuilders.dev/audit v0.0.27
-	go.wandrs.dev/binding v0.0.2
+	go.wandrs.dev/binding v0.0.3-0.20230304220051-138903268a03
 	golang.org/x/oauth2 v0.7.0
 	gomodules.xyz/blobfs v0.1.14
 	gomodules.xyz/cert v1.5.2
@@ -216,7 +216,7 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.23.0 // indirect
-	go.wandrs.dev/http v0.0.3 // indirect
+	go.wandrs.dev/http v0.0.2 // indirect
 	go.wandrs.dev/inject v0.0.1 // indirect
 	gocloud.dev v0.26.0 // indirect
 	golang.org/x/crypto v0.7.0 // indirect

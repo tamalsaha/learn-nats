@@ -75,7 +75,8 @@ func Inject(fn func(inject.Injector) error) func(next http.Handler) http.Handler
 			}
 
 			if err := fn(injector); err != nil {
-				responseWriter(injector).APIError(err)
+				ww := ResponseWriter(injector)
+				ww.APIError(err)
 				return
 			}
 			next.ServeHTTP(w, req)
@@ -132,9 +133,7 @@ func Set(typ reflect.Type, val reflect.Value) func(next http.Handler) http.Handl
 	}
 }
 
-var (
-	errorType = reflect.TypeOf((*error)(nil)).Elem()
-)
+var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
 // HandlerFunc converts a regular function into a net/http handler.
 //
@@ -201,7 +200,7 @@ func HandlerFunc(fn interface{}) http.HandlerFunc {
 			panic(fmt.Sprintf("failed to invoke %s, reason: %v", typ.String(), err))
 		}
 
-		ww := responseWriter(injector)
+		ww := ResponseWriter(injector)
 		switch len(results) {
 		case 0:
 			if !ww.Written() {
@@ -211,6 +210,10 @@ func HandlerFunc(fn interface{}) http.HandlerFunc {
 		case 1:
 			if firstReturnIsErr {
 				err, _ := results[0].Interface().(error)
+				if ww.Written() {
+					return
+				}
+
 				ww.APIError(err)
 				return
 			}
@@ -243,7 +246,7 @@ func HandlerFunc(fn interface{}) http.HandlerFunc {
 	}
 }
 
-func responseWriter(injector inject.Injector) httpw.ResponseWriter {
+func ResponseWriter(injector inject.Injector) httpw.ResponseWriter {
 	return injector.GetVal(inject.InterfaceOf((*httpw.ResponseWriter)(nil))).Interface().(httpw.ResponseWriter)
 }
 

@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/tamalsaha/learn-nats/natsclient"
 	"time"
 
-	"github.com/nats-io/nats.go"
 	"github.com/tamalsaha/learn-nats/shared"
 	"github.com/tamalsaha/learn-nats/transport"
 	core "k8s.io/api/core/v1"
@@ -34,7 +34,7 @@ func main() {
 func run() error {
 	_ = clientgoscheme.AddToScheme(scheme)
 
-	nc, err := nats.Connect(shared.NATS_URL)
+	nc, err := natsclient.NewConnection(shared.NATS_URL, "")
 	if err != nil {
 		klog.Fatalln(err)
 	}
