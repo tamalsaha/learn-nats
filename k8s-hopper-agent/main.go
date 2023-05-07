@@ -120,8 +120,14 @@ func main() {
 			_, _ = ncw.WriteError(err)
 			return
 		}
-		if e2 := w.Flush(); e2 != nil {
-			klog.ErrorS(e2, "failed to flush buffer")
+		if w.Buffered() > 0 {
+			if e2 := w.Flush(); e2 != nil {
+				klog.ErrorS(e2, "failed to flush buffer")
+			}
+		} else {
+			if _, e2 := ncw.Write([]byte("\n")); e2 != nil {
+				klog.ErrorS(e2, "failed to close buffer")
+			}
 		}
 	})
 	if err != nil {
