@@ -1,6 +1,6 @@
 module github.com/tamalsaha/learn-nats
 
-go 1.18
+go 1.20
 
 require (
 	github.com/go-chi/chi/v5 v5.0.8
@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/nats-io/nats-server/v2 v2.9.11
-	github.com/nats-io/nats.go v1.25.0
+	github.com/nats-io/nats.go v1.28.0
 	github.com/rs/xid v1.4.0
 	github.com/unrolled/render v1.6.0
 	go.bytebuilders.dev/audit v0.0.27
@@ -16,14 +16,14 @@ require (
 	golang.org/x/oauth2 v0.7.0
 	gomodules.xyz/blobfs v0.1.14
 	gomodules.xyz/cert v1.5.2
-	gomodules.xyz/jsonpatch/v2 v2.2.0
+	gomodules.xyz/jsonpatch/v2 v2.4.0
 	gomodules.xyz/ulids v0.1.0
 	k8s.io/api v0.25.3
 	k8s.io/apimachinery v0.25.4
 	k8s.io/apiserver v0.25.3
 	k8s.io/client-go v0.25.3
 	k8s.io/klog/v2 v2.80.1
-	kmodules.xyz/client-go v0.25.22
+	kmodules.xyz/client-go v0.25.30
 	kubepack.dev/kubepack v0.7.0
 	sigs.k8s.io/controller-runtime v0.13.1
 	x-helm.dev/apimachinery v0.0.9
@@ -152,7 +152,7 @@ require (
 	github.com/jonboulle/clockwork v0.3.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.15.14 // indirect
+	github.com/klauspost/compress v1.16.5 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect

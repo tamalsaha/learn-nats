@@ -641,9 +641,10 @@ github.com/josharian/intern
 # github.com/json-iterator/go v1.1.12
 ## explicit; go 1.12
 github.com/json-iterator/go
-# github.com/klauspost/compress v1.15.14
-## explicit; go 1.17
+# github.com/klauspost/compress v1.16.5
+## explicit; go 1.18
 github.com/klauspost/compress
+github.com/klauspost/compress/flate
 github.com/klauspost/compress/fse
 github.com/klauspost/compress/huff0
 github.com/klauspost/compress/internal/cpuinfo
@@ -749,10 +750,11 @@ github.com/nats-io/nats-server/v2/logger
 github.com/nats-io/nats-server/v2/server
 github.com/nats-io/nats-server/v2/server/pse
 github.com/nats-io/nats-server/v2/server/sysmem
-# github.com/nats-io/nats.go v1.25.0
+# github.com/nats-io/nats.go v1.28.0
 ## explicit; go 1.19
 github.com/nats-io/nats.go
 github.com/nats-io/nats.go/encoders/builtin
+github.com/nats-io/nats.go/internal/parser
 github.com/nats-io/nats.go/util
 # github.com/nats-io/nkeys v0.4.4
 ## explicit; go 1.19
@@ -1052,8 +1054,8 @@ gomodules.xyz/cert
 # gomodules.xyz/encoding v0.0.7
 ## explicit; go 1.17
 gomodules.xyz/encoding/json
-# gomodules.xyz/jsonpatch/v2 v2.2.0
-## explicit; go 1.12
+# gomodules.xyz/jsonpatch/v2 v2.4.0
+## explicit; go 1.20
 gomodules.xyz/jsonpatch/v2
 # gomodules.xyz/jsonpath v0.0.2
 ## explicit; go 1.16
@@ -1756,7 +1758,7 @@ kmodules.xyz/apiversion
 # kmodules.xyz/apply v0.25.0
 ## explicit; go 1.18
 kmodules.xyz/apply
-# kmodules.xyz/client-go v0.25.22
+# kmodules.xyz/client-go v0.25.30
 ## explicit; go 1.18
 kmodules.xyz/client-go
 kmodules.xyz/client-go/api/v1
