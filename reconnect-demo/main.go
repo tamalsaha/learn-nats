@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -23,19 +24,19 @@ func main() {
 
 		err := nc.Publish("greet.joe", []byte("hello"))
 		if err != nil {
-			oneliners.FILE()
+			oneliners.FILE(err)
 			continue
 		}
 
 		sub, err := nc.SubscribeSync("greet.*")
 		if err != nil {
-			oneliners.FILE()
+			oneliners.FILE(err)
 			continue
 		}
 
 		msg, err := sub.NextMsg(10 * time.Millisecond)
-		if err != nil {
-			oneliners.FILE()
+		if err != nil && !errors.Is(err, nats.ErrTimeout) {
+			oneliners.FILE(err)
 			continue
 		}
 		fmt.Println("subscribed after a publish...")
@@ -43,38 +44,38 @@ func main() {
 
 		err = nc.Publish("greet.joe", []byte("hello"))
 		if err != nil {
-			oneliners.FILE()
+			oneliners.FILE(err)
 			continue
 		}
 		err = nc.Publish("greet.pam", []byte("hello"))
 		if err != nil {
-			oneliners.FILE()
+			oneliners.FILE(err)
 			continue
 		}
 
 		msg, err = sub.NextMsg(10 * time.Millisecond)
 		if err != nil {
-			oneliners.FILE()
+			oneliners.FILE(err)
 			continue
 		}
 		fmt.Printf("msg data: %q on subject %q\n", string(msg.Data), msg.Subject)
 
 		msg, err = sub.NextMsg(10 * time.Millisecond)
 		if err != nil {
-			oneliners.FILE()
+			oneliners.FILE(err)
 			continue
 		}
 		fmt.Printf("msg data: %q on subject %q\n", string(msg.Data), msg.Subject)
 
 		err = nc.Publish("greet.bob", []byte("hello"))
 		if err != nil {
-			oneliners.FILE()
+			oneliners.FILE(err)
 			continue
 		}
 
 		msg, err = sub.NextMsg(10 * time.Millisecond)
 		if err != nil {
-			oneliners.FILE()
+			oneliners.FILE(err)
 			continue
 		}
 		fmt.Printf("msg data: %q on subject %q\n", string(msg.Data), msg.Subject)
