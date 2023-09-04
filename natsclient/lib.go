@@ -89,15 +89,15 @@ func errorHandler(nc *nats.Conn, s *nats.Subscription, err error) {
 
 // called after reconnection
 func reconnectHandler(nc *nats.Conn) {
-	klog.V(5).Infof("Reconnected to %s", nc.ConnectedUrl())
+	klog.Warningf("Reconnected to %s", nc.ConnectedUrl())
 }
 
 // called after disconnection
 func disconnectHandler(nc *nats.Conn, err error) {
 	if err != nil {
-		klog.V(5).Infof("Disconnected from event receiver due to error: %v", err)
+		klog.Warningf("Disconnected from event receiver due to error: %v", err)
 	} else {
-		klog.V(5).Infof("Disconnected from event receiver")
+		klog.Warningf("Disconnected from event receiver")
 	}
 }
 

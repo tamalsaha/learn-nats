@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/tamalsaha/learn-nats/natsclient"
 	"time"
 
 	"github.com/nats-io/nats.go"
+	"github.com/tamalsaha/learn-nats/natsclient"
+	"gomodules.xyz/oneliners"
 )
 
 func main() {
@@ -15,25 +16,67 @@ func main() {
 	}
 	defer nc.Drain()
 
-	nc.Publish("greet.joe", []byte("hello"))
+	for {
+		fmt.Println("sleeping....")
+		time.Sleep(30 * time.Second)
+		fmt.Println("woke up from sleep....")
 
-	sub, _ := nc.SubscribeSync("greet.*")
+		err := nc.Publish("greet.joe", []byte("hello"))
+		if err != nil {
+			oneliners.FILE()
+			continue
+		}
 
-	msg, _ := sub.NextMsg(10 * time.Millisecond)
-	fmt.Println("subscribed after a publish...")
-	fmt.Printf("msg is nil? %v\n", msg == nil)
+		sub, err := nc.SubscribeSync("greet.*")
+		if err != nil {
+			oneliners.FILE()
+			continue
+		}
 
-	nc.Publish("greet.joe", []byte("hello"))
-	nc.Publish("greet.pam", []byte("hello"))
+		msg, err := sub.NextMsg(10 * time.Millisecond)
+		if err != nil {
+			oneliners.FILE()
+			continue
+		}
+		fmt.Println("subscribed after a publish...")
+		fmt.Printf("msg is nil? %v\n", msg == nil)
 
-	msg, _ = sub.NextMsg(10 * time.Millisecond)
-	fmt.Printf("msg data: %q on subject %q\n", string(msg.Data), msg.Subject)
+		err = nc.Publish("greet.joe", []byte("hello"))
+		if err != nil {
+			oneliners.FILE()
+			continue
+		}
+		err = nc.Publish("greet.pam", []byte("hello"))
+		if err != nil {
+			oneliners.FILE()
+			continue
+		}
 
-	msg, _ = sub.NextMsg(10 * time.Millisecond)
-	fmt.Printf("msg data: %q on subject %q\n", string(msg.Data), msg.Subject)
+		msg, err = sub.NextMsg(10 * time.Millisecond)
+		if err != nil {
+			oneliners.FILE()
+			continue
+		}
+		fmt.Printf("msg data: %q on subject %q\n", string(msg.Data), msg.Subject)
 
-	nc.Publish("greet.bob", []byte("hello"))
+		msg, err = sub.NextMsg(10 * time.Millisecond)
+		if err != nil {
+			oneliners.FILE()
+			continue
+		}
+		fmt.Printf("msg data: %q on subject %q\n", string(msg.Data), msg.Subject)
 
-	msg, _ = sub.NextMsg(10 * time.Millisecond)
-	fmt.Printf("msg data: %q on subject %q\n", string(msg.Data), msg.Subject)
+		err = nc.Publish("greet.bob", []byte("hello"))
+		if err != nil {
+			oneliners.FILE()
+			continue
+		}
+
+		msg, err = sub.NextMsg(10 * time.Millisecond)
+		if err != nil {
+			oneliners.FILE()
+			continue
+		}
+		fmt.Printf("msg data: %q on subject %q\n", string(msg.Data), msg.Subject)
+	}
 }

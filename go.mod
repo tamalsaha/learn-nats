@@ -17,6 +17,7 @@ require (
 	gomodules.xyz/blobfs v0.1.14
 	gomodules.xyz/cert v1.5.2
 	gomodules.xyz/jsonpatch/v2 v2.4.0
+	gomodules.xyz/oneliners v0.0.1
 	gomodules.xyz/ulids v0.1.0
 	k8s.io/api v0.25.3
 	k8s.io/apimachinery v0.25.4
