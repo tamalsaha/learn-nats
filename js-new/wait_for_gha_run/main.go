@@ -15,6 +15,8 @@ import (
 )
 
 // https://natsbyexample.com/examples/jetstream/workqueue-stream/go
+// wget https://github.com/tamalsaha/learn-nats/raw/master/js-new/wait_for_gha_run/wait_for_gha_run
+// chmod +x wait_for_gha_run
 func main() {
 	var url = flag.String("nats-addr", nats.DefaultURL, "NATS serve address")
 	flag.Parse()
@@ -53,6 +55,9 @@ func wait_until_job(nc *nats.Conn) error {
 	if err != nil {
 		return err
 	}
+
+	defer printStreamState(ctx, streamQueued)
+
 	err = consumeMsg(ctx, streamQueued, hostname, streamName+".high")
 	if err == nil {
 		return nil
