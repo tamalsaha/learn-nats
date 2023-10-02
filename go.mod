@@ -24,10 +24,10 @@ require (
 	k8s.io/apiserver v0.25.3
 	k8s.io/client-go v0.25.3
 	k8s.io/klog/v2 v2.80.1
-	kmodules.xyz/client-go v0.25.30
+	kmodules.xyz/client-go v0.25.38
 	kubepack.dev/kubepack v0.7.0
 	sigs.k8s.io/controller-runtime v0.13.1
-	x-helm.dev/apimachinery v0.0.9
+	x-helm.dev/apimachinery v0.0.12
 )
 
 require (
@@ -52,7 +52,7 @@ require (
 	github.com/BurntSushi/toml v1.1.0 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver/v3 v3.2.0 // indirect
+	github.com/Masterminds/semver/v3 v3.2.1 // indirect
 	github.com/Masterminds/sprig/v3 v3.2.2 // indirect
 	github.com/Masterminds/squirrel v1.5.3 // indirect
 	github.com/PuerkitoBio/purell v1.2.0 // indirect
@@ -222,7 +222,7 @@ require (
 	go.wandrs.dev/inject v0.0.1 // indirect
 	gocloud.dev v0.26.0 // indirect
 	golang.org/x/crypto v0.13.0 // indirect
-	golang.org/x/net v0.10.0 // indirect
+	golang.org/x/net v0.15.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.12.0 // indirect
 	golang.org/x/term v0.12.0 // indirect
