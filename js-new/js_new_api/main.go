@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -22,15 +21,15 @@ func main() {
 
 	// Create a stream
 	s, _ := js.CreateStream(ctx, jetstream.StreamConfig{
-		Name:     "ORDERS",
-		Subjects: []string{"ORDERS.*"},
+		Name:     "ORDERS2",
+		Subjects: []string{"ORDERS2.*"},
 	})
 
 	// Publish some messages
-	for i := 0; i < 100; i++ {
-		js.Publish(ctx, "ORDERS.new", []byte("hello message "+strconv.Itoa(i)))
-		fmt.Printf("Published hello message %d\n", i)
-	}
+	//for i := 0; i < 100; i++ {
+	//	js.Publish(ctx, "ORDERS.new", []byte("hello message "+strconv.Itoa(i)))
+	//	fmt.Printf("Published hello message %d\n", i)
+	//}
 
 	// Create durable consumer
 	c, _ := s.CreateOrUpdateConsumer(ctx, jetstream.ConsumerConfig{
@@ -38,11 +37,14 @@ func main() {
 		AckPolicy: jetstream.AckExplicitPolicy,
 	})
 
-	c.FetchNoWait(1)
+	// c.FetchNoWait(1)
 
 	// Get 10 messages from the consumer
 	messageCounter := 0
-	msgs, _ := c.Fetch(10)
+	msgs, e2 := c.FetchNoWait(10)
+	if e2 != nil {
+		panic(e2)
+	}
 	for msg := range msgs.Messages() {
 		msg.Ack()
 		fmt.Printf("Received a JetStream message via fetch: %s\n", string(msg.Data()))
