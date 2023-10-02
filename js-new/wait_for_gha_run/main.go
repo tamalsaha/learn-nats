@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"time"
+
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/pkg/errors"
 	flag "github.com/spf13/pflag"
 	"k8s.io/klog/v2"
-	"os"
-	"time"
 )
 
 // https://natsbyexample.com/examples/jetstream/workqueue-stream/go
