@@ -10,6 +10,7 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 )
 
+// https://github.com/nats-io/nats.go/blob/main/jetstream/README.md#basic-usage
 func main() {
 	// In the `jetstream` package, almost all API calls rely on `context.Context` for timeout/cancellation handling
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
