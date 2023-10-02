@@ -1,4 +1,4 @@
-// Copyright 2020-2022 The NATS Authors
+// Copyright 2020-2023 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -329,6 +329,10 @@ func generateJSMappingTable(domain string) map[string]string {
 
 // JSMaxDescription is the maximum description length for streams and consumers.
 const JSMaxDescriptionLen = 4 * 1024
+
+// JSMaxMetadataLen is the maximum length for streams an consumers metadata map.
+// It's calculated by summing length of all keys an values.
+const JSMaxMetadataLen = 128 * 1024
 
 // JSMaxNameLen is the maximum name lengths for streams, consumers and templates.
 // Picked 255 as it seems to be a widely used file name limit
@@ -789,8 +793,7 @@ func (s *Server) processJSAPIRoutedRequests() {
 		select {
 		case <-queue.ch:
 			reqs := queue.pop()
-			for _, req := range reqs {
-				r := req.(*jsAPIRoutedReq)
+			for _, r := range reqs {
 				client.pa = r.pa
 				start := time.Now()
 				r.jsub.icb(r.sub, client, r.acc, r.subject, r.reply, r.msg)
@@ -813,7 +816,7 @@ func (s *Server) setJetStreamExportSubs() error {
 
 	// Start the go routine that will process API requests received by the
 	// subscription below when they are coming from routes, etc..
-	s.jsAPIRoutedReqs = s.newIPQueue("Routed JS API Requests")
+	s.jsAPIRoutedReqs = newIPQueue[*jsAPIRoutedReq](s, "Routed JS API Requests")
 	s.startGoRoutine(s.processJSAPIRoutedRequests)
 
 	// This is the catch all now for all JetStream API calls.
@@ -891,10 +894,17 @@ func (s *Server) sendAPIErrResponse(ci *ClientInfo, acc *Account, subject, reply
 const errRespDelay = 500 * time.Millisecond
 
 func (s *Server) sendDelayedAPIErrResponse(ci *ClientInfo, acc *Account, subject, reply, request, response string, rg *raftGroup) {
+	js := s.getJetStream()
+	if js == nil {
+		return
+	}
 	var quitCh <-chan struct{}
+	js.mu.RLock()
 	if rg != nil && rg.node != nil {
 		quitCh = rg.node.QuitC()
 	}
+	js.mu.RUnlock()
+
 	s.startGoRoutine(func() {
 		defer s.grWG.Done()
 		select {
@@ -1363,9 +1373,12 @@ func (s *Server) jsStreamCreateRequest(sub *subscription, c *client, _ *Account,
 		return
 	}
 	resp.StreamInfo = &StreamInfo{
-		Created: mset.createdTime(),
-		State:   mset.state(),
-		Config:  mset.config(),
+		Created:   mset.createdTime(),
+		State:     mset.state(),
+		Config:    mset.config(),
+		TimeStamp: time.Now().UTC(),
+		Mirror:    mset.mirrorInfo(),
+		Sources:   mset.sourcesInfo(),
 	}
 	resp.DidCreate = true
 	s.sendAPIResponse(ci, acc, subject, reply, string(msg), s.jsonResponse(resp))
@@ -1451,12 +1464,13 @@ func (s *Server) jsStreamUpdateRequest(sub *subscription, c *client, _ *Account,
 	}
 
 	resp.StreamInfo = &StreamInfo{
-		Created: mset.createdTime(),
-		State:   mset.state(),
-		Config:  mset.config(),
-		Domain:  s.getOpts().JetStreamDomain,
-		Mirror:  mset.mirrorInfo(),
-		Sources: mset.sourcesInfo(),
+		Created:   mset.createdTime(),
+		State:     mset.state(),
+		Config:    mset.config(),
+		Domain:    s.getOpts().JetStreamDomain,
+		Mirror:    mset.mirrorInfo(),
+		Sources:   mset.sourcesInfo(),
+		TimeStamp: time.Now().UTC(),
 	}
 	s.sendAPIResponse(ci, acc, subject, reply, string(msg), s.jsonResponse(resp))
 }
@@ -1676,12 +1690,13 @@ func (s *Server) jsStreamListRequest(sub *subscription, c *client, _ *Account, s
 	for _, mset := range msets[offset:] {
 		config := mset.config()
 		resp.Streams = append(resp.Streams, &StreamInfo{
-			Created: mset.createdTime(),
-			State:   mset.state(),
-			Config:  config,
-			Domain:  s.getOpts().JetStreamDomain,
-			Mirror:  mset.mirrorInfo(),
-			Sources: mset.sourcesInfo(),
+			Created:   mset.createdTime(),
+			State:     mset.state(),
+			Config:    config,
+			Domain:    s.getOpts().JetStreamDomain,
+			Mirror:    mset.mirrorInfo(),
+			Sources:   mset.sourcesInfo(),
+			TimeStamp: time.Now().UTC(),
 		})
 		if len(resp.Streams) >= JSApiListLimit {
 			break
@@ -1836,6 +1851,7 @@ func (s *Server) jsStreamInfoRequest(sub *subscription, c *client, a *Account, s
 		Mirror:     mset.mirrorInfo(),
 		Sources:    mset.sourcesInfo(),
 		Alternates: js.streamAlternates(ci, config.Name),
+		TimeStamp:  time.Now().UTC(),
 	}
 	if clusterWideConsCount > 0 {
 		resp.StreamInfo.State.Consumers = clusterWideConsCount
@@ -1843,42 +1859,44 @@ func (s *Server) jsStreamInfoRequest(sub *subscription, c *client, a *Account, s
 
 	// Check if they have asked for subject details.
 	if subjects != _EMPTY_ {
-		if mss := mset.store.SubjectsState(subjects); len(mss) > 0 {
-			// As go iterates over map in a non-consistent order, no choice but to buffer it a slice
-
-			buffer := make([]string, 0, len(mss))
-			for subj := range mss {
-				buffer = append(buffer, subj)
-			}
-
-			// Sort it
-			sort.Strings(buffer)
-
-			if offset > len(buffer) {
-				offset = len(buffer)
-			}
-
-			end := offset + JSMaxSubjectDetails
-			if end > len(buffer) {
-				end = len(buffer)
-			}
-
-			actualSize := end - offset
-			var sd map[string]uint64
-
-			if actualSize > 0 {
-				sd = make(map[string]uint64, actualSize)
-				for _, ss := range buffer[offset:end] {
-					sd[ss] = mss[ss].Msgs
-				}
-			}
-
-			resp.StreamInfo.State.Subjects = sd
+		st := mset.store.SubjectsTotals(subjects)
+		if lst := len(st); lst > 0 {
+			// Common for both cases.
 			resp.Offset = offset
 			resp.Limit = JSMaxSubjectDetails
-			resp.Total = len(mss)
-		}
+			resp.Total = lst
 
+			if offset == 0 && lst <= JSMaxSubjectDetails {
+				resp.StreamInfo.State.Subjects = st
+			} else {
+				// Here we have to filter list due to offset or maximum constraints.
+				subjs := make([]string, 0, len(st))
+				for subj := range st {
+					subjs = append(subjs, subj)
+				}
+				// Sort it
+				sort.Strings(subjs)
+
+				if offset > len(subjs) {
+					offset = len(subjs)
+				}
+
+				end := offset + JSMaxSubjectDetails
+				if end > len(subjs) {
+					end = len(subjs)
+				}
+				actualSize := end - offset
+				var sd map[string]uint64
+
+				if actualSize > 0 {
+					sd = make(map[string]uint64, actualSize)
+					for _, ss := range subjs[offset:end] {
+						sd[ss] = st[ss]
+					}
+				}
+				resp.StreamInfo.State.Subjects = sd
+			}
+		}
 	}
 	// Check for out of band catchups.
 	if mset.hasCatchupPeers() {
@@ -1966,18 +1984,24 @@ func (s *Server) jsStreamLeaderStepDownRequest(sub *subscription, c *client, _ *
 		return
 	}
 
-	// Call actual stepdown.
-	if mset != nil {
+	if mset == nil {
+		resp.Success = true
+		s.sendAPIResponse(ci, acc, subject, reply, string(msg), s.jsonResponse(resp))
+		return
+	}
+
+	// Call actual stepdown. Do this in a Go routine.
+	go func() {
 		if node := mset.raftNode(); node != nil {
 			mset.setLeader(false)
 			// TODO (mh) eventually make sure all go routines exited and all channels are cleared
 			time.Sleep(250 * time.Millisecond)
 			node.StepDown()
 		}
-	}
 
-	resp.Success = true
-	s.sendAPIResponse(ci, acc, subject, reply, string(msg), s.jsonResponse(resp))
+		resp.Success = true
+		s.sendAPIResponse(ci, acc, subject, reply, string(msg), s.jsonResponse(resp))
+	}()
 }
 
 // Request to have a consumer leader stepdown.
@@ -2072,16 +2096,23 @@ func (s *Server) jsConsumerLeaderStepDownRequest(sub *subscription, c *client, _
 		return
 	}
 
-	// Call actual stepdown.
-	if n := o.raftNode(); n != nil {
+	n := o.raftNode()
+	if n == nil {
+		resp.Success = true
+		s.sendAPIResponse(ci, acc, subject, reply, string(msg), s.jsonResponse(resp))
+		return
+	}
+
+	// Call actual stepdown. Do this in a Go routine.
+	go func() {
 		o.setLeader(false)
 		// TODO (mh) eventually make sure all go routines exited and all channels are cleared
 		time.Sleep(250 * time.Millisecond)
 		n.StepDown()
-	}
 
-	resp.Success = true
-	s.sendAPIResponse(ci, acc, subject, reply, string(msg), s.jsonResponse(resp))
+		resp.Success = true
+		s.sendAPIResponse(ci, acc, subject, reply, string(msg), s.jsonResponse(resp))
+	}()
 }
 
 // Request to remove a peer from a clustered stream.
@@ -2635,7 +2666,7 @@ func (s *Server) jsLeaderAccountPurgeRequest(sub *subscription, c *client, _ *Ac
 }
 
 // Request to have the meta leader stepdown.
-// These will only be received the the meta leaders, so less checking needed.
+// These will only be received by the meta leader, so less checking needed.
 func (s *Server) jsLeaderStepDownRequest(sub *subscription, c *client, _ *Account, subject, reply string, rmsg []byte) {
 	if c == nil || !s.JetStreamEnabled() {
 		return
@@ -3301,11 +3332,11 @@ func (s *Server) processStreamRestore(ci *ClientInfo, acc *Account, cfg *StreamC
 
 	// For signaling to upper layers.
 	resultCh := make(chan result, 1)
-	activeQ := s.newIPQueue(fmt.Sprintf("[ACC:%s] stream '%s' restore", acc.Name, streamName)) // of int
+	activeQ := newIPQueue[int](s, fmt.Sprintf("[ACC:%s] stream '%s' restore", acc.Name, streamName)) // of int
 
 	var total int
 
-	// FIXM(dlc) - Probably take out of network path eventually due to disk I/O?
+	// FIXME(dlc) - Probably take out of network path eventually due to disk I/O?
 	processChunk := func(sub *subscription, c *client, _ *Account, subject, reply string, msg []byte) {
 		// We require reply subjects to communicate back failures, flow etc. If they do not have one log and cancel.
 		if reply == _EMPTY_ {
@@ -3339,7 +3370,7 @@ func (s *Server) processStreamRestore(ci *ClientInfo, acc *Account, cfg *StreamC
 		// TODO(dlc) - We could check apriori and cancel initial request if we know it won't fit.
 		total += len(msg)
 		if js.wouldExceedLimits(FileStorage, total) {
-			s.resourcesExeededError()
+			s.resourcesExceededError()
 			resultCh <- result{NewJSInsufficientResourcesError(), reply}
 			return
 		}
@@ -3430,9 +3461,14 @@ func (s *Server) processStreamRestore(ci *ClientInfo, acc *Account, cfg *StreamC
 					s.Warnf("Restore failed for %s for stream '%s > %s' in %v",
 						friendlyBytes(int64(total)), streamName, acc.Name, end.Sub(start))
 				} else {
-					resp.StreamInfo = &StreamInfo{Created: mset.createdTime(), State: mset.state(), Config: mset.config()}
+					resp.StreamInfo = &StreamInfo{
+						Created:   mset.createdTime(),
+						State:     mset.state(),
+						Config:    mset.config(),
+						TimeStamp: time.Now().UTC(),
+					}
 					s.Noticef("Completed restore of %s for stream '%s > %s' in %v",
-						friendlyBytes(int64(total)), streamName, acc.Name, end.Sub(start))
+						friendlyBytes(int64(total)), streamName, acc.Name, end.Sub(start).Round(time.Millisecond))
 				}
 
 				// On the last EOF, send back the stream info or error status.
@@ -3441,9 +3477,10 @@ func (s *Server) processStreamRestore(ci *ClientInfo, acc *Account, cfg *StreamC
 				doneCh <- err
 				return
 			case <-activeQ.ch:
-				n := activeQ.popOne().(int)
-				total += n
-				notActive.Reset(activityInterval)
+				if n, ok := activeQ.popOne(); ok {
+					total += n
+					notActive.Reset(activityInterval)
+				}
 			case <-notActive.C:
 				err := fmt.Errorf("restore for stream '%s > %s' is stalled", acc, streamName)
 				doneCh <- err
@@ -3744,11 +3781,11 @@ func (s *Server) jsConsumerCreateRequest(sub *subscription, c *client, a *Accoun
 		} else {
 			streamName = streamNameFromSubject(subject)
 			consumerName = consumerNameFromSubject(subject)
-		}
-		// New has optional filtered subject as part of main subject..
-		if n > 7 {
-			tokens := strings.Split(subject, tsep)
-			filteredSubject = strings.Join(tokens[6:], tsep)
+			// New has optional filtered subject as part of main subject..
+			if n > 6 {
+				tokens := strings.Split(subject, tsep)
+				filteredSubject = strings.Join(tokens[6:], tsep)
+			}
 		}
 	}
 
@@ -3813,6 +3850,13 @@ func (s *Server) jsConsumerCreateRequest(sub *subscription, c *client, a *Accoun
 		return
 	}
 
+	// in case of multiple filters provided, error if new API is used.
+	if filteredSubject != _EMPTY_ && len(req.Config.FilterSubjects) != 0 {
+		resp.Error = NewJSConsumerMultipleFiltersNotAllowedError()
+		s.sendAPIErrResponse(ci, acc, subject, reply, string(msg), s.jsonResponse(&resp))
+		return
+	}
+
 	// Check for a filter subject.
 	if filteredSubject != _EMPTY_ && req.Config.FilterSubject != filteredSubject {
 		resp.Error = NewJSConsumerCreateFilterSubjectMismatchError()
@@ -3823,10 +3867,11 @@ func (s *Server) jsConsumerCreateRequest(sub *subscription, c *client, a *Accoun
 	if isClustered && !req.Config.Direct {
 		// If we are inline with client, we still may need to do a callout for consumer info
 		// during this call, so place in Go routine to not block client.
+		// Router and Gateway API calls already in separate context.
 		if c.kind != ROUTER && c.kind != GATEWAY {
-			go s.jsClusteredConsumerRequest(ci, acc, subject, reply, rmsg, req.Stream, &req.Config)
+			go s.jsClusteredConsumerRequest(ci, acc, subject, reply, rmsg, req.Stream, &req.Config, req.Action)
 		} else {
-			s.jsClusteredConsumerRequest(ci, acc, subject, reply, rmsg, req.Stream, &req.Config)
+			s.jsClusteredConsumerRequest(ci, acc, subject, reply, rmsg, req.Stream, &req.Config, req.Action)
 		}
 		return
 	}
@@ -3845,7 +3890,7 @@ func (s *Server) jsConsumerCreateRequest(sub *subscription, c *client, a *Accoun
 		return
 	}
 
-	o, err := stream.addConsumer(&req.Config)
+	o, err := stream.addConsumerWithAction(&req.Config, req.Action)
 
 	if err != nil {
 		if IsNatsErr(err, JSConsumerStoreFailedErrF) {
@@ -4165,32 +4210,44 @@ func (s *Server) jsConsumerInfoRequest(sub *subscription, c *client, _ *Account,
 			}
 			// We have a consumer assignment.
 			js.mu.RLock()
+
 			var node RaftNode
 			var leaderNotPartOfGroup bool
-			if rg := ca.Group; rg != nil && rg.node != nil && rg.isMember(ourID) {
-				node = rg.node
-				if gl := node.GroupLeader(); gl != _EMPTY_ && !rg.isMember(gl) {
-					leaderNotPartOfGroup = true
+			var isMember bool
+
+			rg := ca.Group
+			if rg != nil && rg.isMember(ourID) {
+				isMember = true
+				if rg.node != nil {
+					node = rg.node
+					if gl := node.GroupLeader(); gl != _EMPTY_ && !rg.isMember(gl) {
+						leaderNotPartOfGroup = true
+					}
 				}
 			}
 			js.mu.RUnlock()
 			// Check if we should ignore all together.
 			if node == nil {
-				// We have been assigned and are pending.
-				if ca.pending {
-					// Send our config and defaults for state and no cluster info.
+				// We have been assigned but have not created a node yet. If we are a member return
+				// our config and defaults for state and no cluster info.
+				if isMember {
+					// Since we access consumerAssignment, need js lock.
+					js.mu.RLock()
 					resp.ConsumerInfo = &ConsumerInfo{
-						Stream:  ca.Stream,
-						Name:    ca.Name,
-						Created: ca.Created,
-						Config:  ca.Config,
+						Stream:    ca.Stream,
+						Name:      ca.Name,
+						Created:   ca.Created,
+						Config:    ca.Config,
+						TimeStamp: time.Now().UTC(),
 					}
-					s.sendAPIResponse(ci, acc, subject, reply, string(msg), s.jsonResponse(resp))
+					b := s.jsonResponse(resp)
+					js.mu.RUnlock()
+					s.sendAPIResponse(ci, acc, subject, reply, string(msg), b)
 				}
 				return
 			}
 			// If we are a member and we have a group leader or we had a previous leader consider bailing out.
-			if node != nil && (node.GroupLeader() != _EMPTY_ || node.HadPreviousLeader()) {
+			if node.GroupLeader() != _EMPTY_ || node.HadPreviousLeader() {
 				if leaderNotPartOfGroup {
 					resp.Error = NewJSConsumerOfflineError()
 					s.sendDelayedAPIErrResponse(ci, acc, subject, reply, string(msg), s.jsonResponse(&resp), nil)

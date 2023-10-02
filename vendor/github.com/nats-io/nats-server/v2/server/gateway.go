@@ -761,7 +761,7 @@ func (s *Server) createGateway(cfg *gatewayCfg, url *url.URL, conn net.Conn) {
 	// Snapshot server options.
 	opts := s.getOpts()
 
-	now := time.Now().UTC()
+	now := time.Now()
 	c := &client{srv: s, nc: conn, start: now, last: now, kind: GATEWAY}
 
 	// Are we creating the gateway based on the configuration
@@ -870,9 +870,7 @@ func (s *Server) createGateway(cfg *gatewayCfg, url *url.URL, conn net.Conn) {
 
 	// Announce ourselves again to new connections.
 	if solicit && s.EventsEnabled() {
-		s.mu.Lock()
-		s.sendStatsz(fmt.Sprintf(serverStatsSubj, s.info.ID))
-		s.mu.Unlock()
+		s.sendStatszUpdate()
 	}
 }
 
@@ -1215,11 +1213,11 @@ func (s *Server) forwardNewGatewayToLocalCluster(oinfo *Info) {
 	b, _ := json.Marshal(info)
 	infoJSON := []byte(fmt.Sprintf(InfoProto, b))
 
-	for _, r := range s.routes {
+	s.forEachRemote(func(r *client) {
 		r.mu.Lock()
 		r.enqueueProto(infoJSON)
 		r.mu.Unlock()
-	}
+	})
 }
 
 // Sends queue subscriptions interest to remote gateway.
@@ -1320,7 +1318,7 @@ func (s *Server) processGatewayInfoFromRoute(info *Info, routeSrvID string, rout
 
 // Sends INFO protocols to the given route connection for each known Gateway.
 // These will be processed by the route and delegated to the gateway code to
-// imvoke processImplicitGateway.
+// invoke processImplicitGateway.
 func (s *Server) sendGatewayConfigsToRoute(route *client) {
 	gw := s.gateway
 	gw.RLock()
@@ -2680,12 +2678,11 @@ func (s *Server) gatewayHandleSubjectNoInterest(c *client, acc *Account, accName
 	// If there is no subscription for this account, we would normally
 	// send an A-, however, if this account has the internal subscription
 	// for service reply, send a specific RS- for the subject instead.
-	hasSubs := acc.sl.Count() > 0
-	if !hasSubs {
-		acc.mu.RLock()
-		hasSubs = acc.siReply != nil
-		acc.mu.RUnlock()
-	}
+	// Need to grab the lock here since sublist can change during reload.
+	acc.mu.RLock()
+	hasSubs := acc.sl.Count() > 0 || acc.siReply != nil
+	acc.mu.RUnlock()
+
 	// If there is at least a subscription, possibly send RS-
 	if hasSubs {
 		sendProto := false
@@ -2745,8 +2742,7 @@ func (g *srvGateway) getClusterHash() []byte {
 
 // Store this route in map with the key being the remote server's name hash
 // and the remote server's ID hash used by gateway replies mapping routing.
-func (s *Server) storeRouteByHash(srvNameHash, srvIDHash string, c *client) {
-	s.routesByHash.Store(srvNameHash, c)
+func (s *Server) storeRouteByHash(srvIDHash string, c *client) {
 	if !s.gateway.enabled {
 		return
 	}
@@ -2754,8 +2750,7 @@ func (s *Server) storeRouteByHash(srvNameHash, srvIDHash string, c *client) {
 }
 
 // Remove the route with the given keys from the map.
-func (s *Server) removeRouteByHash(srvNameHash, srvIDHash string) {
-	s.routesByHash.Delete(srvNameHash)
+func (s *Server) removeRouteByHash(srvIDHash string) {
 	if !s.gateway.enabled {
 		return
 	}
@@ -2764,11 +2759,33 @@ func (s *Server) removeRouteByHash(srvNameHash, srvIDHash string) {
 
 // Returns the route with given hash or nil if not found.
 // This is for gateways only.
-func (g *srvGateway) getRouteByHash(hash []byte) *client {
-	if v, ok := g.routesIDByHash.Load(string(hash)); ok {
-		return v.(*client)
+func (s *Server) getRouteByHash(hash, accName []byte) (*client, bool) {
+	id := string(hash)
+	var perAccount bool
+	if v, ok := s.accRouteByHash.Load(string(accName)); ok {
+		if v == nil {
+			id += string(accName)
+			perAccount = true
+		} else {
+			id += strconv.Itoa(v.(int))
+		}
 	}
-	return nil
+	if v, ok := s.gateway.routesIDByHash.Load(id); ok {
+		return v.(*client), perAccount
+	} else if !perAccount {
+		// Check if we have a "no pool" connection at index 0.
+		if v, ok := s.gateway.routesIDByHash.Load(string(hash) + "0"); ok {
+			if r := v.(*client); r != nil {
+				r.mu.Lock()
+				noPool := r.route.noPool
+				r.mu.Unlock()
+				if noPool {
+					return r, false
+				}
+			}
+		}
+	}
+	return nil, perAccount
 }
 
 // Returns the subject from the routed reply
@@ -2824,10 +2841,11 @@ func (c *client) handleGatewayReply(msg []byte) (processed bool) {
 	}
 
 	var route *client
+	var perAccount bool
 
 	// If the origin is not this server, get the route this should be sent to.
 	if c.kind == GATEWAY && srvHash != nil && !bytes.Equal(srvHash, c.srv.gateway.sIDHash) {
-		route = c.srv.gateway.getRouteByHash(srvHash)
+		route, perAccount = c.srv.getRouteByHash(srvHash, c.pa.account)
 		// This will be possibly nil, and in this case we will try to process
 		// the interest from this server.
 	}
@@ -2839,8 +2857,12 @@ func (c *client) handleGatewayReply(msg []byte) (processed bool) {
 	// getAccAndResultFromCache()
 	var _pacache [256]byte
 	pacache := _pacache[:0]
-	pacache = append(pacache, c.pa.account...)
-	pacache = append(pacache, ' ')
+	// For routes that are dedicated to an account, do not put the account
+	// name in the pacache.
+	if c.kind == GATEWAY || (c.kind == ROUTER && c.route != nil && len(c.route.accName) == 0) {
+		pacache = append(pacache, c.pa.account...)
+		pacache = append(pacache, ' ')
+	}
 	pacache = append(pacache, c.pa.subject...)
 	c.pa.pacache = pacache
 
@@ -2885,8 +2907,10 @@ func (c *client) handleGatewayReply(msg []byte) (processed bool) {
 		var bufa [256]byte
 		var buf = bufa[:0]
 		buf = append(buf, msgHeadProto...)
-		buf = append(buf, acc.Name...)
-		buf = append(buf, ' ')
+		if !perAccount {
+			buf = append(buf, acc.Name...)
+			buf = append(buf, ' ')
+		}
 		buf = append(buf, orgSubject...)
 		buf = append(buf, ' ')
 		if len(c.pa.reply) > 0 {
@@ -2956,7 +2980,7 @@ func (c *client) processInboundGatewayMsg(msg []byte) {
 	// Check if this is a service reply subject (_R_)
 	noInterest := len(r.psubs) == 0
 	checkNoInterest := true
-	if acc.imports.services != nil {
+	if acc.NumServiceImports() > 0 {
 		if isServiceReply(c.pa.subject) {
 			checkNoInterest = false
 		} else {
