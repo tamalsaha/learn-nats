@@ -38,6 +38,8 @@ func main() {
 		AckPolicy: jetstream.AckExplicitPolicy,
 	})
 
+	c.FetchNoWait(1)
+
 	// Get 10 messages from the consumer
 	messageCounter := 0
 	msgs, _ := c.Fetch(10)

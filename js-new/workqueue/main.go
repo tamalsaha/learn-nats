@@ -48,6 +48,9 @@ func main() {
 	})
 	fmt.Println(err)
 
+	/*
+		Double-acking is a mechanism used in JetStream to ensure exactly once semantics in message processing. It involves calling the `AckSync()` function instead of `Ack()` to set a reply subject on the Ack and wait for a response from the server on the reception and processing of the acknowledgement. This helps to avoid message duplication and guarantees that the message will not be re-delivered by the consumer.
+	*/
 	msgs, _ := cons.Fetch(3)
 	for msg := range msgs.Messages() {
 		msg.DoubleAck(ctx)
