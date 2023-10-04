@@ -9,6 +9,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/nats-io/nats-server/v2 v2.10.1
 	github.com/nats-io/nats.go v1.30.0
+	github.com/olekukonko/tablewriter v0.0.5
 	github.com/rs/xid v1.4.0
 	github.com/unrolled/render v1.6.0
 	go.bytebuilders.dev/audit v0.0.27
